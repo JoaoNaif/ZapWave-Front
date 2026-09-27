@@ -1,0 +1,76 @@
+/*
+ * Paleta do ZapWave — tema escuro com lima elétrico como cor principal.
+ *
+ * Cada token vira classe do Tailwind com qualquer prefixo de cor:
+ *   --color-primary  →  bg-primary, text-primary, border-primary, ring-primary...
+ *   --color-surface  →  bg-surface, hover:bg-surface...
+ * Opacidade funciona normal: bg-primary/10, border-danger/40...
+ *
+ * A paleta padrão do Tailwind (red-400, zinc-800...) também está disponível. Regra:
+ *   - Tem token para a situação (fundo, texto, erro, online...)? Use o token.
+ *   - Não tem (destaque pontual, cor de avatar, teste rápido)? Pode usar a padrão.
+ * Uma cor padrão começou a se repetir com o mesmo sentido? Vire token aqui, com descrição.
+ */
+@theme {
+  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  /* ── Cor principal (marca) ───────────────────────────────────────────
+   * Lima elétrico = o "zap". Use com moderação: é o que chama atenção.
+   * Sempre com texto escuro (on-primary) em cima; branco sobre lima fica ilegível. */
+
+  /* Ação principal da tela: botão "Enviar", "Entrar", "Criar sala"; link ativo;
+   * item selecionado na lista de conversas (barrinha/ícone); badge de não lidas;
+   * foco de input (ring-primary). Um só botão primary por tela/área. */
+  --color-primary: #c8f135;
+  /* Hover/pressed de qualquer coisa que usa primary. */
+  --color-primary-hover: #b4db22;
+  /* Texto e ícones SOBRE fundo primary (botão primary, badge). Nunca use branco. */
+  --color-on-primary: #141a05;
+
+  /* ── Fundos (do mais fundo para o mais "alto") ───────────────────────
+   * Regra: quanto mais à frente o elemento, mais claro o fundo. */
+
+  /* Fundo geral da página e telas de login/cadastro. */
+  --color-app: #0f1115;
+  /* Coluna lateral: lista de conversas, amigos, salas. */
+  --color-sidebar: #15181d;
+  /* Área principal: janela do chat, cards, cabeçalho da conversa, formulário de login. */
+  --color-surface: #1c1f26;
+  /* Elementos por cima da surface: inputs, menus, dropdowns, modais, tooltips,
+   * e o hover de itens de lista (hover:bg-elevated). */
+  --color-elevated: #252932;
+
+  /* Divisórias e bordas: entre sidebar e chat, contorno de inputs e cards.
+   * (classe: border-line, divide-line) */
+  --color-line: #2f343e;
+
+  /* ── Texto ─────────────────────────────────────────────────────────── */
+
+  /* Texto principal: corpo das mensagens, nomes, títulos. */
+  --color-fg: #e8eaee;
+  /* Texto secundário: horário da mensagem, prévia da última msg, @username, legendas. */
+  --color-fg-muted: #9ba1ac;
+  /* Texto terciário: placeholder de input, itens desabilitados, "sem mensagens ainda". */
+  --color-fg-subtle: #6a7080;
+
+  /* ── Bolhas de mensagem ────────────────────────────────────────────── */
+
+  /* Minhas mensagens (lima bem escurecida). Texto em fg, horário em fg-muted. */
+  --color-bubble-mine: #2a3312;
+  /* Mensagens dos outros. */
+  --color-bubble-other: #22262e;
+
+  /* ── Status / feedback ─────────────────────────────────────────────── */
+
+  /* Erros e ações destrutivas: mensagem de erro de formulário, falha ao enviar,
+   * botão "Sair", "Remover membro", "Recusar". Fundo suave: bg-danger/10. */
+  --color-danger: #f2545b;
+  /* Avisos que não bloqueiam: "reconectando...", limite de caracteres perto do fim,
+   * rate limit (429). */
+  --color-warning: #f5b544;
+  /* Usuário online (bolinha de presença) e sucesso discreto (ex.: "pedido enviado").
+   * Aqua = a "wave"; não é verde para não brigar com a primary. */
+  --color-online: #22d3c5;
+  /* Usuário offline/ausente (bolinha de presença) e estados neutros. */
+  --color-away: #6a7080;
+}

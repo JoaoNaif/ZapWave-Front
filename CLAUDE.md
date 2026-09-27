@@ -41,7 +41,10 @@ Subir o back (normalmente o dono já sobe): `npm run services:up` + `npm run sta
 - Comandos: `npm run dev` (porta **5173**, já liberada no CORS do back), `npm run build`,
   `npm run lint`.
 - Import com alias `@/` → `src/`. Env: `VITE_API_URL` (`.env`, modelo em `.env.example`).
-- Estilização e testes: **a definir com o dono**; pergunte antes de escolher.
+- Estilização: **Tailwind v4** (`@tailwindcss/vite`, sem `tailwind.config`). Tokens de cor do
+  projeto em `src/styles/theme.css`, ao lado da paleta padrão do Tailwind. Se existe token
+  para a situação (leia as descrições lá), use o token; a padrão só para o que não tem token.
+- Testes: **a definir com o dono**; pergunte antes de escolher.
 
 ### Estrutura
 
