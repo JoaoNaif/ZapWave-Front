@@ -32,15 +32,35 @@ espere o "pode fazer" antes de implementar.
 Subir o back (normalmente o dono já sobe): `npm run services:up` + `npm run start:dev` em
 `../ZapWave`. Health: `GET http://localhost:3333/health`.
 
-## Front — estado atual
+## Front
 
 - React 19 + Vite 8 + TypeScript 6, **React Compiler** ligado (`vite.config.ts`) → não precisa
   de `useMemo`/`useCallback` manual. `StrictMode` ativo.
-- Ainda é o template do Vite: sem router, lib de estado, lib HTTP, estilização ou testes.
+- Libs: `react-router` (v7, importar de `'react-router'`), `@tanstack/react-query`, `axios`,
+  `zod`, `react-hook-form` + `@hookform/resolvers`.
 - Comandos: `npm run dev` (porta **5173**, já liberada no CORS do back), `npm run build`,
   `npm run lint`.
-- Convenções (pastas, estado, estilo, testes): **a definir com o dono** — pergunte antes de
-  escolher.
+- Import com alias `@/` → `src/`. Env: `VITE_API_URL` (`.env`, modelo em `.env.example`).
+- Estilização e testes: **a definir com o dono**; pergunte antes de escolher.
+
+### Estrutura
+
+```
+src/
+  main.tsx
+  app/            App.tsx (providers) e router.tsx (rotas)
+  layouts/        AuthLayout (telas públicas) e AppLayout (telas logadas: /me + WebSocket)
+  pages/          uma pasta por tela; só compõe, sem lógica de API
+    login/ register/ home/
+  features/       lógica por domínio: api.ts (chamadas axios), hooks.ts (React Query),
+    auth/         schemas.ts (zod), components/ específicos da feature
+  components/     componentes compartilhados entre features
+  lib/            api.ts (instância axios, withCredentials), query-client.ts
+  types/          DTOs do backend (ver "Tipos" abaixo)
+```
+
+Novo domínio (chat, amizade, salas) = nova pasta em `features/`. Página nova = pasta em
+`pages/` + rota em `app/router.tsx`.
 
 ## Modelo mental do servidor
 
