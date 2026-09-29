@@ -1,6 +1,10 @@
 import { isAxiosError } from 'axios'
 import { api } from '@/lib/api'
-import type { FriendDto, FriendshipDto } from '@/types/friendship'
+import type {
+  FriendDto,
+  FriendRequestDto,
+  FriendshipDto,
+} from '@/types/friendship'
 import type { UserSummaryDto } from '@/types/user'
 
 // GET /friends → 200 { friends }. Só amizades aceitas, já ordenadas pelo back
@@ -29,4 +33,22 @@ export async function inviteFriendship(recipientId: string) {
     { recipientId },
   )
   return response.data.friendship
+}
+
+// GET /friend-requests → 200 { friendRequests }. Só os recebidos e ainda pendentes
+export async function fetchFriendRequests() {
+  const response = await api.get<{ friendRequests: FriendRequestDto[] }>(
+    '/friend-requests',
+  )
+  return response.data.friendRequests
+}
+
+// PUT /invite-friendship-accept → 204. Só o destinatário, só pedido pendente
+export async function acceptFriendRequest(friendshipId: string) {
+  await api.put('/invite-friendship-accept', { friendshipId })
+}
+
+// PUT /invite-friendship-decline → 204. Definitivo: o par não pode mais se convidar
+export async function declineFriendRequest(friendshipId: string) {
+  await api.put('/invite-friendship-decline', { friendshipId })
 }

@@ -16,3 +16,10 @@ export interface FriendDto extends UserSummaryDto {
   online: boolean
   lastMessageAt: Iso | null
 }
+
+// GET /friend-requests: pedidos recebidos e pendentes, mais recente primeiro
+export interface FriendRequestDto {
+  friendshipId: string
+  sender: UserSummaryDto
+  createdAt: Iso
+}

@@ -145,6 +145,8 @@ Formato Nest: `{ statusCode, message, error }`. Validação: `{ message: 'Valida
 | `POST /invite-friendship` | `{ recipientId }` | 201 `{ friendship }`; **409 se o par já teve amizade em qualquer estado** (recusa é definitiva); 401 a si mesmo |
 | `PUT /invite-friendship-accept` | `{ friendshipId }` | 204; só o destinatário, só `pending` |
 | `PUT /invite-friendship-decline` | `{ friendshipId }` | 204; marca `rejected` |
+| `GET /friends` | — | 200 `{ friends: FriendDto[] }`, já ordenado (última msg na DM primeiro; sem msg → alfabético) |
+| `GET /friend-requests` | — | 200 `{ friendRequests: FriendRequestDto[] }`: só recebidos e `pending`, mais recente primeiro |
 
 **Salas** (os DTOs usam `roomId` em vez de `conversationId` → normalize como `Conversation` com `type: 'room'`)
 
@@ -190,6 +192,9 @@ interface FriendshipDto {
   status: 'pending' | 'accepted' | 'rejected'
   createdAt: Iso; updatedAt: Iso
 }
+
+interface FriendDto extends UserSummaryDto { online: boolean; lastMessageAt: Iso | null }
+interface FriendRequestDto { friendshipId: string; sender: UserSummaryDto; createdAt: Iso }
 
 interface ConversationDto { id: string; type: 'dm' | 'room'; name: string | null; createdById: string; createdAt: Iso }
 interface ConversationMemberDto {
@@ -272,8 +277,6 @@ está aberta e visível, `PUT /mark-conversation`.
 Não existem ainda; serão criadas **junto com o front**, quando a tela precisar:
 
 - **Listar minhas conversas** (DMs + salas, com última msg e não lidas): a maior lacuna
-- Listar amigos
-- Pedidos de amizade pendentes (sem eles não há `friendshipId` para aceitar/recusar)
 - Convites de sala pendentes (sem `inviteId` não dá para aceitar) e recusar convite de sala
 - Membros de uma sala
 - Meus devices

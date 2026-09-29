@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { NavLink } from 'react-router'
 import { Avatar } from '@/components/Avatar'
+import { CountBadge } from '@/components/CountBadge'
 import { InboxIcon, UserPlusIcon, UsersIcon } from '@/components/icons'
+import { useFriendRequests } from '@/features/friendship/hooks'
 import type { AppContext } from '../app-context'
 
 const itemClass =
@@ -9,6 +11,8 @@ const itemClass =
 
 // Barra de baixo no mobile (< md). Some dentro da conversa (quem decide é o AppLayout)
 export function MobileNav({ me, openDialog }: AppContext) {
+  const requests = useFriendRequests()
+
   return (
     <nav className="flex border-t border-line bg-sidebar pb-[env(safe-area-inset-bottom)] md:hidden">
       <NavLink
@@ -32,8 +36,10 @@ export function MobileNav({ me, openDialog }: AppContext) {
         icon={
           <span className="relative">
             <InboxIcon className="size-6" />
-            {/* Pedidos ainda não funcionam: bolinha neutra marca "em breve" */}
-            <span className="absolute -top-0.5 -right-1 size-2 rounded-full bg-away" />
+            <CountBadge
+              count={requests.data?.length ?? 0}
+              className="absolute -top-1.5 -right-2.5 ring-2 ring-sidebar"
+            />
           </span>
         }
         label="Pedidos"

@@ -8,7 +8,9 @@ import {
   UserPlusIcon,
 } from '@/components/icons'
 import { Logo } from '@/components/Logo'
+import { CountBadge } from '@/components/CountBadge'
 import { FriendList } from '@/features/friendship/components/FriendList'
+import { useFriendRequests } from '@/features/friendship/hooks'
 import type { AppContext } from '../app-context'
 
 const COLLAPSED_KEY = 'zapwave:sidebar-collapsed'
@@ -33,6 +35,7 @@ function saveCollapsed(value: boolean) {
 // Só no desktop (md+). No mobile a navegação é a MobileNav, embaixo
 export function Sidebar({ me, openDialog }: AppContext) {
   const [collapsed, setCollapsed] = useState(readCollapsed)
+  const requests = useFriendRequests()
 
   function toggle() {
     setCollapsed(!collapsed)
@@ -76,7 +79,7 @@ export function Sidebar({ me, openDialog }: AppContext) {
           collapsed={collapsed}
           icon={<InboxIcon className="size-5" />}
           label="Pedidos de amizade"
-          badge="em breve"
+          badge={requests.data?.length ?? 0}
           onClick={() => openDialog('friend-requests')}
         />
       </div>
@@ -128,7 +131,8 @@ interface SidebarActionProps {
   icon: ReactNode
   label: string
   onClick: () => void
-  badge?: string
+  // Contador (ex.: pedidos pendentes); 0 = escondido
+  badge?: number
   // Destaque suave em lima: a ação principal da sidebar
   highlight?: boolean
 }
@@ -138,7 +142,7 @@ function SidebarAction({
   icon,
   label,
   onClick,
-  badge,
+  badge = 0,
   highlight = false,
 }: SidebarActionProps) {
   return (
@@ -155,15 +159,20 @@ function SidebarAction({
           : 'text-fg-muted hover:bg-elevated hover:text-fg'
       }`}
     >
-      {icon}
+      <span className="relative flex">
+        {icon}
+        {/* Recolhida: o contador fica em cima do ícone */}
+        {collapsed && (
+          <CountBadge
+            count={badge}
+            className="absolute -top-2 -right-2.5 ring-2 ring-sidebar"
+          />
+        )}
+      </span>
       {!collapsed && (
         <>
           <span className="flex-1 text-left">{label}</span>
-          {badge && (
-            <span className="rounded-full bg-elevated px-2 py-0.5 text-[10px] font-medium text-fg-subtle">
-              {badge}
-            </span>
-          )}
+          <CountBadge count={badge} />
         </>
       )}
     </button>
