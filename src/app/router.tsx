@@ -4,6 +4,7 @@ import { AppLayout } from '@/layouts/AppLayout'
 import { LoginPage } from '@/pages/login/LoginPage'
 import { RegisterPage } from '@/pages/register/RegisterPage'
 import { HomePage } from '@/pages/home/HomePage'
+import { ConversationPage } from '@/pages/conversation/ConversationPage'
 
 export const router = createBrowserRouter([
   {
@@ -15,6 +16,9 @@ export const router = createBrowserRouter([
   },
   {
     element: <AppLayout />,
-    children: [{ path: '/', element: <HomePage /> }],
+    children: [
+      { path: '/', element: <HomePage /> },
+      { path: '/dm/:friendId', element: <ConversationPage /> },
+    ],
   },
 ])

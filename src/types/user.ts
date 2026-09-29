@@ -8,3 +8,9 @@ export interface UserDto {
   createdAt: Iso
   updatedAt: Iso
 }
+
+export interface UserSummaryDto {
+  id: string
+  username: string
+  displayName: string
+}
