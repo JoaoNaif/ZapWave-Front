@@ -4,11 +4,13 @@ import { useMe } from '@/features/auth/hooks'
 import { AccountDialog } from '@/features/auth/components/AccountDialog'
 import { AddFriendDialog } from '@/features/friendship/components/AddFriendDialog'
 import { FriendRequestsDialog } from '@/features/friendship/components/FriendRequestsDialog'
+import { ChatProvider } from '@/features/chat/ChatProvider'
+import { ConnectionBanner } from '@/features/chat/components/ConnectionBanner'
 import type { AppContext, AppDialog } from './app-context'
 import { Sidebar } from './components/Sidebar'
 import { MobileNav } from './components/MobileNav'
 
-// Telas logadas: checa a sessão (GET /me). Aqui também vai entrar o WebSocket
+// Telas logadas: checa a sessão (GET /me) e abre o WebSocket (ChatProvider)
 export function AppLayout() {
   const me = useMe()
   const [dialog, setDialog] = useState<AppDialog | null>(null)
@@ -45,14 +47,17 @@ export function AppLayout() {
   const closeDialog = () => setDialog(null)
 
   return (
-    <div className="flex h-dvh flex-col md:flex-row">
-      <Sidebar {...context} />
+    <ChatProvider deviceId={me.data.deviceId}>
+      <div className="flex h-dvh flex-col md:flex-row">
+        <Sidebar {...context} />
 
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <Outlet context={context} />
-      </main>
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <ConnectionBanner />
+          <Outlet context={context} />
+        </main>
 
-      {!inConversation && <MobileNav {...context} />}
+        {!inConversation && <MobileNav {...context} />}
+      </div>
 
       <AddFriendDialog open={dialog === 'add-friend'} onClose={closeDialog} />
       <FriendRequestsDialog
@@ -64,6 +69,6 @@ export function AppLayout() {
         open={dialog === 'account'}
         onClose={closeDialog}
       />
-    </div>
+    </ChatProvider>
   )
 }

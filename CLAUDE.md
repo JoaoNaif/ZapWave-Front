@@ -237,6 +237,9 @@ type ClientFrame = { type: 'ack'; messageId: string }
 - Ao abrir, o servidor já empurra os **pendentes sem ack** e depois o ao vivo. O cliente não
   manda cursor.
 - Frame malformado do cliente é **ignorado em silêncio**.
+- ⚠ Os frames do servidor chegam como **binário** (o stream do back converte a string em
+  `Buffer`), não texto: use `binaryType = 'arraybuffer'` + `TextDecoder` antes do
+  `JSON.parse` (já feito em `features/chat/socket.ts`).
 
 **Ack**
 - **Cumulativo**: confirmar `X` confirma todas as anteriores. Mande só o maior id (debounce ~300 ms).
