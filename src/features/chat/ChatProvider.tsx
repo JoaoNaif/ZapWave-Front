@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { confirmSession } from '@/features/auth/session'
 import { ChatContext } from './context'
 import { startChatSocket, type SocketStatus } from './socket'
 import { createChatStore } from './store'
@@ -35,10 +36,7 @@ export function ChatProvider({
       },
       onStatus: setStatus,
       onReconnect: () => store.refreshLoaded(),
-      isSessionAlive: async () => {
-        await queryClient.invalidateQueries({ queryKey: ['me'] })
-        return queryClient.getQueryData(['me']) != null
-      },
+      isSessionAlive: () => confirmSession(queryClient),
     })
 
     return () => {
