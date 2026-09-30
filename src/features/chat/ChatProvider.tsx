@@ -25,12 +25,13 @@ export function ChatProvider({
       deviceId,
       onMessage: (message) => {
         store.receive([message])
-        // Mensagem nova muda a ordem da lista de amigos (agrupa rajadas)
+        // Mensagem nova muda a ordem das listas de amigos e de grupos
+        // (agrupa rajadas numa busca só)
         clearTimeout(friendsTimer)
-        friendsTimer = setTimeout(
-          () => queryClient.invalidateQueries({ queryKey: ['friends'] }),
-          1000,
-        )
+        friendsTimer = setTimeout(() => {
+          void queryClient.invalidateQueries({ queryKey: ['friends'] })
+          void queryClient.invalidateQueries({ queryKey: ['rooms'] })
+        }, 1000)
       },
       onStatus: setStatus,
       onReconnect: () => store.refreshLoaded(),

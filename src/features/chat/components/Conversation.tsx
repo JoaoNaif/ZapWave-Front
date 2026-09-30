@@ -7,9 +7,15 @@ import { MessageList } from './MessageList'
 interface ConversationProps {
   conversationId: string
   meId: string
+  // Grupo: senderId → nome (quem falou aparece em cima da bolha)
+  senderNames?: Map<string, string>
 }
 
-export function Conversation({ conversationId, meId }: ConversationProps) {
+export function Conversation({
+  conversationId,
+  meId,
+  senderNames,
+}: ConversationProps) {
   const { store } = useChat()
   const { messages } = useConversation(conversationId)
 
@@ -21,7 +27,11 @@ export function Conversation({ conversationId, meId }: ConversationProps) {
 
   return (
     <>
-      <MessageList conversationId={conversationId} meId={meId} />
+      <MessageList
+        conversationId={conversationId}
+        meId={meId}
+        senderNames={senderNames}
+      />
       <Composer
         onSend={(body) => store.send(conversationId, meId, body)}
       />

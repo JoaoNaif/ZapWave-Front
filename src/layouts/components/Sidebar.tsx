@@ -1,17 +1,20 @@
 import { useState, type ReactNode } from 'react'
 import { Avatar } from '@/components/Avatar'
 import {
+  GroupIcon,
   InboxIcon,
   MoreIcon,
   PanelCloseIcon,
   PanelOpenIcon,
+  PlusIcon,
   UserPlusIcon,
+  UsersIcon,
 } from '@/components/icons'
 import { Logo } from '@/components/Logo'
 import { CountBadge } from '@/components/CountBadge'
 import { FriendList } from '@/features/friendship/components/FriendList'
-import { useFriendRequests } from '@/features/friendship/hooks'
-import type { AppContext } from '../app-context'
+import { RoomList } from '@/features/rooms/components/RoomList'
+import { usePendingRequestsCount, type AppContext } from '../app-context'
 
 const COLLAPSED_KEY = 'zapwave:sidebar-collapsed'
 
@@ -33,9 +36,9 @@ function saveCollapsed(value: boolean) {
 }
 
 // Só no desktop (md+). No mobile a navegação é a MobileNav, embaixo
-export function Sidebar({ me, openDialog }: AppContext) {
+export function Sidebar({ me, openDialog, tab, setTab }: AppContext) {
   const [collapsed, setCollapsed] = useState(readCollapsed)
-  const requests = useFriendRequests()
+  const pendingCount = usePendingRequestsCount()
 
   function toggle() {
     setCollapsed(!collapsed)
@@ -67,34 +70,69 @@ export function Sidebar({ me, openDialog }: AppContext) {
         </button>
       </header>
 
-      <div className="flex flex-col gap-1 p-3">
-        <SidebarAction
+      <div
+        role="tablist"
+        aria-label="Lista"
+        className={`mx-3 mt-3 gap-1 rounded-lg bg-app p-1 ${
+          collapsed ? 'flex flex-col' : 'grid grid-cols-2'
+        }`}
+      >
+        <TabButton
           collapsed={collapsed}
-          icon={<UserPlusIcon className="size-5" />}
-          label="Adicionar amigo"
-          onClick={() => openDialog('add-friend')}
-          highlight
+          active={tab === 'friends'}
+          icon={<UsersIcon className="size-4.5" />}
+          label="Amigos"
+          onClick={() => setTab('friends')}
         />
-        <SidebarAction
+        <TabButton
           collapsed={collapsed}
-          icon={<InboxIcon className="size-5" />}
-          label="Pedidos de amizade"
-          badge={requests.data?.length ?? 0}
-          onClick={() => openDialog('friend-requests')}
+          active={tab === 'rooms'}
+          icon={<GroupIcon className="size-4.5" />}
+          label="Grupos"
+          onClick={() => setTab('rooms')}
         />
       </div>
 
-      {!collapsed && (
-        <p className="px-5 pt-2 pb-2 text-xs font-semibold tracking-wide text-fg-subtle uppercase">
-          Amigos
-        </p>
-      )}
+      <div className="flex flex-col gap-1 p-3">
+        {/* A ação principal acompanha a aba */}
+        {tab === 'friends' ? (
+          <SidebarAction
+            collapsed={collapsed}
+            icon={<UserPlusIcon className="size-5" />}
+            label="Adicionar amigo"
+            onClick={() => openDialog('add-friend')}
+            highlight
+          />
+        ) : (
+          <SidebarAction
+            collapsed={collapsed}
+            icon={<PlusIcon className="size-5" />}
+            label="Criar grupo"
+            onClick={() => openDialog('create-room')}
+            highlight
+          />
+        )}
+        <SidebarAction
+          collapsed={collapsed}
+          icon={<InboxIcon className="size-5" />}
+          label="Pedidos"
+          badge={pendingCount}
+          onClick={() => openDialog('requests')}
+        />
+      </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
-        <FriendList
-          collapsed={collapsed}
-          onAddFriend={() => openDialog('add-friend')}
-        />
+        {tab === 'friends' ? (
+          <FriendList
+            collapsed={collapsed}
+            onAddFriend={() => openDialog('add-friend')}
+          />
+        ) : (
+          <RoomList
+            collapsed={collapsed}
+            onCreateRoom={() => openDialog('create-room')}
+          />
+        )}
       </div>
 
       <footer className="border-t border-line p-3">
@@ -123,6 +161,35 @@ export function Sidebar({ me, openDialog }: AppContext) {
         </button>
       </footer>
     </aside>
+  )
+}
+
+interface TabButtonProps {
+  collapsed: boolean
+  active: boolean
+  icon: ReactNode
+  label: string
+  onClick: () => void
+}
+
+function TabButton({ collapsed, active, icon, label, onClick }: TabButtonProps) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      title={collapsed ? label : undefined}
+      aria-label={collapsed ? label : undefined}
+      className={`flex cursor-pointer items-center justify-center gap-2 rounded-md py-1.5 text-sm font-medium transition ${
+        active
+          ? `bg-elevated ${collapsed ? 'text-primary' : 'text-fg'}`
+          : 'text-fg-muted hover:text-fg'
+      }`}
+    >
+      {icon}
+      {!collapsed && label}
+    </button>
   )
 }
 

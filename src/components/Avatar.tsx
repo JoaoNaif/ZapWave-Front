@@ -1,12 +1,4 @@
-// Cores de avatar não têm token: usa a paleta padrão (permitido pelo theme.css)
-const colors = [
-  'bg-sky-500/20 text-sky-300',
-  'bg-violet-500/20 text-violet-300',
-  'bg-amber-500/20 text-amber-300',
-  'bg-rose-500/20 text-rose-300',
-  'bg-emerald-500/20 text-emerald-300',
-  'bg-fuchsia-500/20 text-fuchsia-300',
-]
+import { avatarColor } from '@/lib/avatar-color'
 
 const sizes = {
   xs: 'size-6 text-[10px]',
@@ -15,11 +7,10 @@ const sizes = {
   lg: 'size-16 text-xl',
 }
 
-// Mesmo id → mesma cor, em qualquer tela
-function colorFor(id: string) {
-  let hash = 0
-  for (const char of id) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
-  return colors[hash % colors.length]
+// Pessoa = círculo; grupo = quadrado arredondado (bate o olho e diferencia)
+const shapes = {
+  circle: 'rounded-full',
+  square: 'rounded-xl',
 }
 
 function initials(name: string) {
@@ -33,15 +24,24 @@ interface AvatarProps {
   id: string
   name: string
   size?: keyof typeof sizes
+  shape?: keyof typeof shapes
   // undefined = não mostra a bolinha de presença
   online?: boolean
 }
 
-export function Avatar({ id, name, size = 'md', online }: AvatarProps) {
+export function Avatar({
+  id,
+  name,
+  size = 'md',
+  shape = 'circle',
+  online,
+}: AvatarProps) {
+  const color = avatarColor(id)
+
   return (
     <span className="relative inline-flex shrink-0">
       <span
-        className={`flex items-center justify-center rounded-full font-semibold ${sizes[size]} ${colorFor(id)}`}
+        className={`flex items-center justify-center font-semibold ${sizes[size]} ${shapes[shape]} ${color.bg} ${color.text}`}
       >
         {initials(name)}
       </span>

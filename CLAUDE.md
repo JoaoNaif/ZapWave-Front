@@ -54,8 +54,8 @@ src/
   app/            App.tsx (providers) e router.tsx (rotas)
   layouts/        AuthLayout (telas públicas) e AppLayout (telas logadas: /me + WebSocket)
   pages/          uma pasta por tela; só compõe, sem lógica de API
-    login/ register/ home/
-  features/       lógica por domínio: api.ts (chamadas axios), hooks.ts (React Query),
+    login/ register/ home/ conversation/ room/
+  features/       lógica por domínio (auth, friendship, chat, rooms): api.ts, hooks.ts,
     auth/         schemas.ts (zod), components/ específicos da feature
   components/     componentes compartilhados entre features
   lib/            api.ts (instância axios, withCredentials), query-client.ts
@@ -152,11 +152,20 @@ Formato Nest: `{ statusCode, message, error }`. Validação: `{ message: 'Valida
 
 | Rota | Body | Resposta |
 |---|---|---|
+| `GET /rooms` | — | 200 `{ rooms: MyRoomDto[] }`: só salas, `role` = meu papel, última atividade (msg ou criação) primeiro |
+| `GET /rooms/:id/members` | — | 200 `{ members: RoomMemberSummaryDto[] }` (owner → admins → members); 404 se não sou membro |
+| `GET /room-invites` | — | 200 `{ roomInvites: ReceivedRoomInviteDto[] }`: recebidos e `pending`, mais recente primeiro |
 | `POST /room` | `{ name }` | 201 `{ room, owner }` |
-| `POST /room-invite` | `{ conversationId, recipientId }` | 201 `{ room, invite, sender }`; só owner/admin |
+| `POST /room-invite` | `{ conversationId, recipientId }` | 201 `{ room, invite, sender }`; só owner/admin; **409 se já é membro ou já existe convite em qualquer status** (quem recusou/saiu não volta) |
 | `POST /room-invite-accept` | `{ inviteId }` | 201 `{ room, invite, member }` |
+| `POST /room-invite-decline` | `{ inviteId }` | 204; só o convidado, só `pending` |
+| `PUT /room-promote-admin` | `{ conversationId, targetUserId }` | 204; só owner; idempotente |
+| `PUT /room-demote-admin` | `{ conversationId, targetUserId }` | 204; só owner; idempotente |
 | `DELETE /room-leave` | `{ conversationId }` ⚠ body em DELETE | 204; owner não pode sair (401) |
 | `DELETE /room-remove-member` | `{ conversationId, targetUserId }` ⚠ body em DELETE | 204; owner remove qualquer um, admin só `member` |
+
+Salas são conversas: histórico, `POST /message`, WS e `mark-conversation` usam o `room.id`
+como `conversationId`. A mensagem só traz `senderId`: o nome vem de `/rooms/:id/members`.
 
 **Conversas e mensagens**
 
@@ -212,7 +221,12 @@ interface MessageDto {
 interface PresenceDto { userId: string; online: boolean; lastSeenAt: Iso | null }
 interface NotificationDto { id: string; recipientId: string; title: string; content: string; readAt: Iso | null; createdAt: Iso }
 
-// Salas: mesma coisa que Conversation*, com roomId no lugar de conversationId
+// Salas: listagens (id = conversationId; em RoomMemberSummaryDto, id = id do USUÁRIO)
+interface MyRoomDto { id: string; name: string; role: 'owner' | 'admin' | 'member'; memberCount: number; lastMessageAt: Iso | null }
+interface ReceivedRoomInviteDto { inviteId: string; room: { id: string; name: string }; inviter: UserSummaryDto; createdAt: Iso }
+interface RoomMemberSummaryDto extends UserSummaryDto { role: 'owner' | 'admin' | 'member' }
+
+// Salas (respostas de escrita): mesma coisa que Conversation*, com roomId no lugar de conversationId
 interface RoomDto { id: string; name: string | null; type: 'dm' | 'room'; createdById: string; createdAt: Iso }
 interface RoomMemberDto { id: string; roomId: string; userId: string; role: 'owner' | 'admin' | 'member'; joinedAt: Iso; lastReadMessageId: string | null }
 interface RoomInviteDto {
@@ -280,8 +294,7 @@ está aberta e visível, `PUT /mark-conversation`.
 Não existem ainda; serão criadas **junto com o front**, quando a tela precisar:
 
 - **Listar minhas conversas** (DMs + salas, com última msg e não lidas): a maior lacuna
-- Convites de sala pendentes (sem `inviteId` não dá para aceitar) e recusar convite de sala
-- Membros de uma sala
+- Convidar de novo quem recusou ou saiu de uma sala (hoje é 409 para sempre)
 - Meus devices
 - Contador de não lidas (o dado `lastReadMessageId` existe, mas não é exposto)
 - "Digitando…" (frame `typing`)

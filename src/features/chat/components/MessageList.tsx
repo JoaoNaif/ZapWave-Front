@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { AlertIcon, CheckIcon, ClockIcon } from '@/components/icons'
+import { avatarColor } from '@/lib/avatar-color'
 import { formatDayLabel, formatTime, isSameDay } from '@/lib/format'
 import { useChat, useConversation } from '../context'
 import type { ChatMessage } from '../store'
@@ -14,9 +15,15 @@ const GROUP_WINDOW_MS = 5 * 60 * 1000
 interface MessageListProps {
   conversationId: string
   meId: string
+  // Só em grupo: senderId → nome, para mostrar quem falou
+  senderNames?: Map<string, string>
 }
 
-export function MessageList({ conversationId, meId }: MessageListProps) {
+export function MessageList({
+  conversationId,
+  meId,
+  senderNames,
+}: MessageListProps) {
   const { store } = useChat()
   const state = useConversation(conversationId)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -155,6 +162,12 @@ export function MessageList({ conversationId, meId }: MessageListProps) {
                 message={message}
                 mine={message.senderId === meId}
                 grouped={grouped}
+                // Nome só na primeira bolha do bloco, e nunca nas minhas
+                senderName={
+                  senderNames && !grouped && message.senderId !== meId
+                    ? (senderNames.get(message.senderId) ?? 'Ex-membro')
+                    : undefined
+                }
                 onRetry={() => store.retry(conversationId, message.id)}
               />
             </div>
@@ -170,9 +183,16 @@ interface MessageBubbleProps {
   mine: boolean
   grouped: boolean
   onRetry: () => void
+  senderName?: string
 }
 
-function MessageBubble({ message, mine, grouped, onRetry }: MessageBubbleProps) {
+function MessageBubble({
+  message,
+  mine,
+  grouped,
+  onRetry,
+  senderName,
+}: MessageBubbleProps) {
   return (
     <div
       className={`flex flex-col ${mine ? 'items-end' : 'items-start'} ${
@@ -186,6 +206,14 @@ function MessageBubble({ message, mine, grouped, onRetry }: MessageBubbleProps) 
             : `bg-bubble-other ${grouped ? '' : 'rounded-tl-md'}`
         } ${message.status === 'failed' ? 'opacity-60' : ''}`}
       >
+        {senderName && (
+          // Mesma cor do avatar da pessoa
+          <p
+            className={`mb-0.5 truncate text-xs font-semibold ${avatarColor(message.senderId).text}`}
+          >
+            {senderName}
+          </p>
+        )}
         <p className="whitespace-pre-wrap wrap-break-word">
           {message.body}
           {/* Horário "flutuando" no fim da última linha, estilo WhatsApp */}

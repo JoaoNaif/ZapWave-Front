@@ -1,21 +1,51 @@
 import { useState } from 'react'
-import { Navigate, Outlet, useMatch } from 'react-router'
+import { Navigate, Outlet, useLocation, useMatch } from 'react-router'
 import { useMe } from '@/features/auth/hooks'
 import { AccountDialog } from '@/features/auth/components/AccountDialog'
 import { AddFriendDialog } from '@/features/friendship/components/AddFriendDialog'
-import { FriendRequestsDialog } from '@/features/friendship/components/FriendRequestsDialog'
+import { CreateRoomDialog } from '@/features/rooms/components/CreateRoomDialog'
 import { ChatProvider } from '@/features/chat/ChatProvider'
 import { ConnectionBanner } from '@/features/chat/components/ConnectionBanner'
-import type { AppContext, AppDialog } from './app-context'
+import type { AppContext, AppDialog, ListTab } from './app-context'
 import { Sidebar } from './components/Sidebar'
 import { MobileNav } from './components/MobileNav'
+import { RequestsDialog } from './components/RequestsDialog'
+
+const TAB_KEY = 'zapwave:list-tab'
+
+// localStorage pode falhar (aba anônima, bloqueado): aí só não lembra
+function readTab(): ListTab {
+  try {
+    return localStorage.getItem(TAB_KEY) === 'rooms' ? 'rooms' : 'friends'
+  } catch {
+    return 'friends'
+  }
+}
+
+function saveTab(tab: ListTab) {
+  try {
+    localStorage.setItem(TAB_KEY, tab)
+  } catch {
+    // ignora
+  }
+}
 
 // Telas logadas: checa a sessão (GET /me) e abre o WebSocket (ChatProvider)
 export function AppLayout() {
   const me = useMe()
+  const location = useLocation()
   const [dialog, setDialog] = useState<AppDialog | null>(null)
+  // Abriu direto num link de grupo/DM: começa na aba certa
+  const [tab, setTabState] = useState<ListTab>(() =>
+    location.pathname.startsWith('/room/')
+      ? 'rooms'
+      : location.pathname.startsWith('/dm/')
+        ? 'friends'
+        : readTab(),
+  )
   // Dentro da conversa o mobile usa a tela toda: sem barra de baixo
-  const inConversation = useMatch('/dm/:friendId')
+  const inDm = useMatch('/dm/:friendId')
+  const inRoom = useMatch('/room/:roomId')
 
   if (me.isPending) {
     return (
@@ -43,7 +73,17 @@ export function AppLayout() {
 
   if (!me.data) return <Navigate to="/login" replace />
 
-  const context: AppContext = { me: me.data, openDialog: setDialog }
+  function setTab(next: ListTab) {
+    setTabState(next)
+    saveTab(next)
+  }
+
+  const context: AppContext = {
+    me: me.data,
+    openDialog: setDialog,
+    tab,
+    setTab,
+  }
   const closeDialog = () => setDialog(null)
 
   return (
@@ -56,14 +96,12 @@ export function AppLayout() {
           <Outlet context={context} />
         </main>
 
-        {!inConversation && <MobileNav {...context} />}
+        {!inDm && !inRoom && <MobileNav {...context} />}
       </div>
 
       <AddFriendDialog open={dialog === 'add-friend'} onClose={closeDialog} />
-      <FriendRequestsDialog
-        open={dialog === 'friend-requests'}
-        onClose={closeDialog}
-      />
+      <CreateRoomDialog open={dialog === 'create-room'} onClose={closeDialog} />
+      <RequestsDialog open={dialog === 'requests'} onClose={closeDialog} />
       <AccountDialog
         me={me.data}
         open={dialog === 'account'}
