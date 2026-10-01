@@ -5,6 +5,7 @@ import {
   ChevronDownIcon,
   ClockIcon,
 } from '@/components/icons'
+import { Linkify } from '@/components/Linkify'
 import { avatarColor } from '@/lib/avatar-color'
 import { formatDayLabel, formatTime, isSameDay } from '@/lib/format'
 import { useChat, useConversation } from '../context'
@@ -289,7 +290,7 @@ function MessageBubble({
           </p>
         )}
         <p className="wrap-break-word whitespace-pre-wrap">
-          {message.body}
+          <Linkify text={message.body} />
           {/* Horário "flutuando" no fim da última linha, estilo WhatsApp */}
           <span className="float-right mt-1.5 ml-3 flex items-center gap-1 text-[11px] leading-none text-fg-muted">
             {formatTime(message.createdAt)}

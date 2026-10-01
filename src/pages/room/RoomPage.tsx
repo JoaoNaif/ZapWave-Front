@@ -41,7 +41,9 @@ export function RoomPage() {
           >
             <Avatar id={room.id} name={room.name} shape="square" />
             <span className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate text-sm font-semibold">{room.name}</span>
+              <span className="truncate text-sm font-semibold">
+                {room.name}
+              </span>
               <span className="truncate text-xs text-fg-muted">
                 {members.data
                   ? members.data.map((member) => member.displayName).join(', ')

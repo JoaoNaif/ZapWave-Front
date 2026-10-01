@@ -6,21 +6,31 @@ import { RegisterPage } from '@/pages/register/RegisterPage'
 import { HomePage } from '@/pages/home/HomePage'
 import { ConversationPage } from '@/pages/conversation/ConversationPage'
 import { RoomPage } from '@/pages/room/RoomPage'
+import { NotFoundPage } from '@/pages/not-found/NotFoundPage'
+import { ErrorPage } from '@/pages/error/ErrorPage'
 
 export const router = createBrowserRouter([
   {
-    element: <AuthLayout />,
+    // Raiz sem caminho: só existe para o errorElement valer para todas as telas
+    errorElement: <ErrorPage />,
     children: [
-      { path: '/login', element: <LoginPage /> },
-      { path: '/register', element: <RegisterPage /> },
-    ],
-  },
-  {
-    element: <AppLayout />,
-    children: [
-      { path: '/', element: <HomePage /> },
-      { path: '/dm/:friendId', element: <ConversationPage /> },
-      { path: '/room/:roomId', element: <RoomPage /> },
+      {
+        element: <AuthLayout />,
+        children: [
+          { path: '/login', element: <LoginPage /> },
+          { path: '/register', element: <RegisterPage /> },
+        ],
+      },
+      {
+        element: <AppLayout />,
+        children: [
+          { path: '/', element: <HomePage /> },
+          { path: '/dm/:friendId', element: <ConversationPage /> },
+          { path: '/room/:roomId', element: <RoomPage /> },
+        ],
+      },
+      // Qualquer outro endereço. Fora dos layouts: aparece logado ou não
+      { path: '*', element: <NotFoundPage /> },
     ],
   },
 ])
