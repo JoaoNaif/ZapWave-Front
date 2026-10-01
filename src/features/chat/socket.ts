@@ -70,6 +70,8 @@ function lead(
     let attempt = 0
     let hasConnected = false
     let retryTimer: ReturnType<typeof setTimeout> | undefined
+    // Caiu e está esperando o backoff para tentar de novo
+    let waitingRetry = false
     let ackTimer: ReturnType<typeof setTimeout> | undefined
     let pendingAck: string | null = null
 
@@ -92,10 +94,22 @@ function lead(
       // Backoff exponencial com jitter: 1s, 2s, 4s… até 30s
       const base = Math.min(MAX_RETRY_DELAY_MS, 1000 * 2 ** attempt)
       attempt++
+      waitingRetry = true
       retryTimer = setTimeout(connect, base * (0.5 + Math.random() / 2))
     }
 
+    // Internet voltou enquanto esperava o backoff (que pode estar em 30s):
+    // reconecta agora
+    function handleOnline() {
+      if (!waitingRetry) return
+      clearTimeout(retryTimer)
+      attempt = 0
+      connect()
+    }
+    window.addEventListener('online', handleOnline)
+
     function connect() {
+      waitingRetry = false
       options.onStatus(hasConnected ? 'reconnecting' : 'connecting')
       const ws = new WebSocket(socketUrl(options.deviceId))
       // O back manda o JSON como frame binário (Buffer do Node), não texto.
@@ -148,6 +162,7 @@ function lead(
     signal.addEventListener(
       'abort',
       () => {
+        window.removeEventListener('online', handleOnline)
         clearTimeout(retryTimer)
         clearTimeout(ackTimer)
         flushAck()

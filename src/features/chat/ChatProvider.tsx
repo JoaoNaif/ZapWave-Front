@@ -58,7 +58,11 @@ export function ChatProvider({
         }, 1000)
       },
       onStatus: setStatus,
-      onReconnect: () => store.refreshLoaded(),
+      onReconnect: () => {
+        store.refreshLoaded()
+        // Servidor voltou: manda o que ficou na fila sem esperar o backoff
+        store.flushOutbox()
+      },
       isSessionAlive: () => confirmSession(queryClient),
     })
 
@@ -68,6 +72,17 @@ export function ChatProvider({
     }
     // navigate é estável no data router (createBrowserRouter): não reabre o socket
   }, [deviceId, queryClient, store, navigate])
+
+  // Internet voltou: envia a fila de saída na hora
+  useEffect(() => {
+    const flush = () => store.flushOutbox()
+    window.addEventListener('online', flush)
+    flush()
+    return () => {
+      window.removeEventListener('online', flush)
+      store.dispose()
+    }
+  }, [store])
 
   return (
     <ChatContext.Provider value={{ store, status }}>

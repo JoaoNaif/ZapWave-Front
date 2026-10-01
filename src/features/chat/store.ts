@@ -1,5 +1,14 @@
+import { isAxiosError } from 'axios'
 import type { MessageDto } from '@/types/chat'
 import { fetchConversationHistory, sendMessage } from './api'
+
+// Vale tentar de novo: sem resposta (rede caiu), servidor fora (5xx) ou rate
+// limit (429). 4xx de regra (não é membro, texto inválido) não muda tentando
+function isTemporary(error: unknown) {
+  if (!isAxiosError(error) || !error.response) return true
+  const { status } = error.response
+  return status >= 500 || status === 429
+}
 
 // Mensagens ficam fora do React Query: chegam por 3 caminhos (histórico HTTP,
 // resposta do POST e WebSocket) e precisam de merge por id. Um store simples
@@ -249,24 +258,72 @@ export function createChatStore(meId: string) {
     }
   }
 
-  async function post(message: ChatMessage) {
+  // Fila de saída: envia em ordem e, se a rede falhar, tenta de novo sozinha.
+  // Reenviar é seguro: o POST /message é idempotente por clientMessageId
+  const outbox: ChatMessage[] = []
+  let sending = false
+  let retryTimer: ReturnType<typeof setTimeout> | undefined
+  let retryAttempt = 0
+
+  function markFailed(message: ChatMessage) {
+    // Se o eco do WS já chegou, a otimista virou "sent" e isto não muda nada
+    update(message.conversationId, (state) => ({
+      messages: state.messages.map((m) =>
+        m.status === 'sending' && m.id === message.id
+          ? { ...m, status: 'failed' }
+          : m
+      ),
+    }))
+  }
+
+  async function processOutbox() {
+    if (sending) return
+    sending = true
+    clearTimeout(retryTimer)
+
     try {
-      const sent = await sendMessage({
-        conversationId: message.conversationId,
-        body: message.body,
-        clientMessageId: message.id,
-      })
-      receive([sent])
-    } catch {
-      // Se o eco do WS já chegou, a otimista virou "sent" e isto não muda nada
-      update(message.conversationId, (state) => ({
-        messages: state.messages.map((m) =>
-          m.status === 'sending' && m.id === message.id
-            ? { ...m, status: 'failed' }
-            : m
-        ),
-      }))
+      while (outbox.length > 0) {
+        // Sem internet: nem tenta. O evento "online" chama flushOutbox
+        if (!navigator.onLine) return
+
+        const message = outbox[0]
+        try {
+          const sent = await sendMessage({
+            conversationId: message.conversationId,
+            body: message.body,
+            clientMessageId: message.id,
+          })
+          outbox.shift()
+          retryAttempt = 0
+          receive([sent])
+        } catch (error) {
+          if (isTemporary(error)) {
+            // Rede/servidor fora: para a fila (mantém a ordem) e tenta depois.
+            // 1s, 2s, 4s… até 30s
+            const delay = Math.min(30_000, 1000 * 2 ** retryAttempt)
+            retryAttempt++
+            retryTimer = setTimeout(() => void processOutbox(), delay)
+            return
+          }
+          // 4xx (ex.: não é mais membro): tentar de novo não resolve
+          outbox.shift()
+          markFailed(message)
+        }
+      }
+    } finally {
+      sending = false
     }
+  }
+
+  // Conexão voltou (evento "online" ou WS reconectou): tenta agora, sem esperar
+  function flushOutbox() {
+    retryAttempt = 0
+    void processOutbox()
+  }
+
+  // Sessão acabou (desmontou): para de tentar
+  function dispose() {
+    clearTimeout(retryTimer)
   }
 
   // Otimista: aparece na hora como "sending"; a resposta (ou o eco) troca pela real
@@ -284,7 +341,8 @@ export function createChatStore(meId: string) {
     update(conversationId, (state) => ({
       messages: [...state.messages, message],
     }))
-    void post(message)
+    outbox.push(message)
+    void processOutbox()
   }
 
   // Reenvia com o MESMO clientMessageId: se a primeira chegou, o back não duplica
@@ -298,10 +356,13 @@ export function createChatStore(meId: string) {
     update(conversationId, (state) => ({
       messages: state.messages.map((m) => (m.id === message.id ? message : m)),
     }))
-    void post(message)
+    outbox.push(message)
+    flushOutbox()
   }
 
   return {
+    flushOutbox,
+    dispose,
     get,
     subscribe,
     receive,
