@@ -1,5 +1,10 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
-import { AlertIcon, CheckIcon, ClockIcon } from '@/components/icons'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  AlertIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ClockIcon,
+} from '@/components/icons'
 import { avatarColor } from '@/lib/avatar-color'
 import { formatDayLabel, formatTime, isSameDay } from '@/lib/format'
 import { useChat, useConversation } from '../context'
@@ -30,6 +35,10 @@ export function MessageList({
   const stickToBottom = useRef(true)
   // Altura antes de carregar a página anterior: para a tela não "pular"
   const heightBeforeOlder = useRef<number | null>(null)
+  // Mesma informação do stickToBottom, mas em estado: mostra/esconde o botão ↓
+  const [atBottom, setAtBottom] = useState(true)
+  // Última mensagem que estava na tela quando a pessoa saiu do fim
+  const [readUpTo, setReadUpTo] = useState('')
 
   useEffect(() => {
     if (state.history === 'idle') void store.loadLatest(conversationId)
@@ -54,13 +63,39 @@ export function MessageList({
     // history: a lista só monta quando carrega, e aí precisa descer até o fim
   }, [state.messages, state.loadingOlder, state.history, meId])
 
+  // Última mensagem enviada (já no servidor) da lista
+  const lastSentId =
+    state.messages.findLast((message) => message.status === 'sent')?.id ?? ''
+
+  // Mensagens dos outros que chegaram depois que a pessoa saiu do fim.
+  // ULID: comparar string = comparar tempo
+  const newCount = atBottom
+    ? 0
+    : state.messages.filter(
+        (message) =>
+          message.status === 'sent' &&
+          message.senderId !== meId &&
+          message.id > readUpTo
+      ).length
+
+  function scrollToBottom() {
+    const element = scrollRef.current
+    element?.scrollTo({ top: element.scrollHeight, behavior: 'smooth' })
+  }
+
   function handleScroll() {
     const element = scrollRef.current
     if (!element) return
 
-    stickToBottom.current =
+    const nearBottom =
       element.scrollHeight - element.scrollTop - element.clientHeight <
       STICK_THRESHOLD_PX
+    stickToBottom.current = nearBottom
+    if (nearBottom !== atBottom) {
+      setAtBottom(nearBottom)
+      // Saiu do fim: o que chegar depois daqui conta como "nova"
+      if (!nearBottom) setReadUpTo(lastSentId)
+    }
 
     if (
       element.scrollTop < LOAD_OLDER_THRESHOLD_PX &&
@@ -105,76 +140,115 @@ export function MessageList({
   }
 
   return (
-    <div
-      ref={scrollRef}
-      onScroll={handleScroll}
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4 md:px-6"
-    >
-      {/* mt-auto: poucas mensagens ficam embaixo, perto do campo de texto */}
-      <div className="mt-auto flex flex-col">
-        {state.loadingOlder && (
-          <p className="py-2 text-center text-xs text-fg-subtle">
-            Carregando mensagens antigas…
-          </p>
-        )}
-        {state.olderError && (
-          <button
-            type="button"
-            onClick={() => void store.loadOlder(conversationId)}
-            className="cursor-pointer py-2 text-center text-xs text-danger"
-          >
-            Falhou ao carregar as antigas. Tentar de novo
-          </button>
-        )}
-        {!state.hasMore && state.messages.length > 0 && (
-          <p className="py-2 text-center text-xs text-fg-subtle">
-            Início da conversa
-          </p>
-        )}
+    // relative: o botão "↓ novas mensagens" flutua sobre a lista
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4 md:px-6"
+      >
+        {/* mt-auto: poucas mensagens ficam embaixo, perto do campo de texto */}
+        <div className="mt-auto flex flex-col">
+          {state.loadingOlder && (
+            <p className="py-2 text-center text-xs text-fg-subtle">
+              Carregando mensagens antigas…
+            </p>
+          )}
+          {state.olderError && (
+            <button
+              type="button"
+              onClick={() => void store.loadOlder(conversationId)}
+              className="cursor-pointer py-2 text-center text-xs text-danger"
+            >
+              Falhou ao carregar as antigas. Tentar de novo
+            </button>
+          )}
+          {!state.hasMore && state.messages.length > 0 && (
+            <p className="py-2 text-center text-xs text-fg-subtle">
+              Início da conversa
+            </p>
+          )}
 
-        {state.messages.length === 0 && (
-          <p className="py-10 text-center text-sm text-fg-subtle">
-            Nenhuma mensagem ainda. Diga oi!
-          </p>
-        )}
+          {state.messages.length === 0 && (
+            <p className="py-10 text-center text-sm text-fg-subtle">
+              Nenhuma mensagem ainda. Diga oi!
+            </p>
+          )}
 
-        {state.messages.map((message, index) => {
-          const previous = state.messages[index - 1]
-          const newDay =
-            !previous || !isSameDay(previous.createdAt, message.createdAt)
-          const grouped =
-            !newDay &&
-            previous.senderId === message.senderId &&
-            new Date(message.createdAt).getTime() -
-              new Date(previous.createdAt).getTime() <
-              GROUP_WINDOW_MS
+          {state.messages.map((message, index) => {
+            const previous = state.messages[index - 1]
+            const newDay =
+              !previous || !isSameDay(previous.createdAt, message.createdAt)
+            const grouped =
+              !newDay &&
+              previous.senderId === message.senderId &&
+              new Date(message.createdAt).getTime() -
+                new Date(previous.createdAt).getTime() <
+                GROUP_WINDOW_MS
 
-          return (
-            <div key={message.clientMessageId ?? message.id}>
-              {newDay && (
-                <div className="my-3 flex justify-center">
-                  <span className="rounded-full bg-elevated px-3 py-1 text-xs text-fg-muted first-letter:uppercase">
-                    {formatDayLabel(message.createdAt)}
-                  </span>
-                </div>
-              )}
-              <MessageBubble
-                message={message}
-                mine={message.senderId === meId}
-                grouped={grouped}
-                // Nome só na primeira bolha do bloco, e nunca nas minhas
-                senderName={
-                  senderNames && !grouped && message.senderId !== meId
-                    ? (senderNames.get(message.senderId) ?? 'Ex-membro')
-                    : undefined
-                }
-                onRetry={() => store.retry(conversationId, message.id)}
-              />
-            </div>
-          )
-        })}
+            return (
+              <div key={message.clientMessageId ?? message.id}>
+                {newDay && (
+                  <div className="my-3 flex justify-center">
+                    <span className="rounded-full bg-elevated px-3 py-1 text-xs text-fg-muted first-letter:uppercase">
+                      {formatDayLabel(message.createdAt)}
+                    </span>
+                  </div>
+                )}
+                <MessageBubble
+                  message={message}
+                  mine={message.senderId === meId}
+                  grouped={grouped}
+                  // Nome só na primeira bolha do bloco, e nunca nas minhas
+                  senderName={
+                    senderNames && !grouped && message.senderId !== meId
+                      ? (senderNames.get(message.senderId) ?? 'Ex-membro')
+                      : undefined
+                  }
+                  onRetry={() => store.retry(conversationId, message.id)}
+                />
+              </div>
+            )
+          })}
+        </div>
       </div>
+
+      {!atBottom && <JumpToBottom count={newCount} onClick={scrollToBottom} />}
     </div>
+  )
+}
+
+// Aparece quando a pessoa rola para cima. Com mensagem nova: pílula em lima
+// com a quantidade; sem: só a setinha para voltar ao fim
+function JumpToBottom({
+  count,
+  onClick,
+}: {
+  count: number
+  onClick: () => void
+}) {
+  if (count > 0) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="absolute bottom-4 left-1/2 flex -translate-x-1/2 cursor-pointer items-center gap-1.5 rounded-full bg-primary py-1.5 pr-4 pl-3 text-xs font-semibold text-on-primary shadow-lg shadow-black/30 transition hover:bg-primary-hover"
+      >
+        <ChevronDownIcon className="size-4" />
+        {count === 1 ? '1 nova mensagem' : `${count} novas mensagens`}
+      </button>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Ir para a última mensagem"
+      className="absolute right-4 bottom-4 flex size-10 cursor-pointer items-center justify-center rounded-full border border-line bg-elevated text-fg-muted shadow-lg shadow-black/30 transition hover:text-fg"
+    >
+      <ChevronDownIcon />
+    </button>
   )
 }
 
