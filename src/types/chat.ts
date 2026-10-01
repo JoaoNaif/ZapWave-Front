@@ -32,3 +32,11 @@ export type ServerFrame =
   | { type: 'ack-result'; messageId: string; acknowledged: boolean }
 
 export type ClientFrame = { type: 'ack'; messageId: string }
+
+// GET /presence/:userId. lastSeenAt = último heartbeat do WS (ping a cada 20 s);
+// null = nunca se conectou. online = heartbeat nos últimos 45 s
+export interface PresenceDto {
+  userId: string
+  online: boolean
+  lastSeenAt: Iso | null
+}

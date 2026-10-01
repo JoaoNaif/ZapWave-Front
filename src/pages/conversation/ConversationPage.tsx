@@ -5,6 +5,8 @@ import { ArrowLeftIcon } from '@/components/icons'
 import { Conversation } from '@/features/chat/components/Conversation'
 import { useDirectConversation } from '@/features/chat/context'
 import { useFriends } from '@/features/friendship/hooks'
+import { usePresence } from '@/features/presence/hooks'
+import { formatLastSeen } from '@/lib/format'
 import { useAppContext } from '@/layouts/app-context'
 
 export function ConversationPage() {
@@ -13,6 +15,11 @@ export function ConversationPage() {
   const friends = useFriends()
   const friend = friends.data?.find((item) => item.id === friendId)
   const dm = useDirectConversation(friendId)
+  const presence = usePresence(friendId)
+
+  // Presença própria da conversa (mais fresca); enquanto não chega, usa a da lista
+  const online = presence.data?.online ?? friend?.online ?? false
+  const lastSeenAt = presence.data?.lastSeenAt ?? null
 
   const notFriends =
     isAxiosError(dm.error) &&
@@ -30,19 +37,19 @@ export function ConversationPage() {
         </Link>
         {friend ? (
           <>
-            <Avatar
-              id={friend.id}
-              name={friend.displayName}
-              online={friend.online}
-            />
+            <Avatar id={friend.id} name={friend.displayName} online={online} />
             <div className="flex min-w-0 flex-col">
               <span className="truncate text-sm font-semibold">
                 {friend.displayName}
               </span>
               <span
-                className={`text-xs ${friend.online ? 'text-online' : 'text-fg-muted'}`}
+                className={`truncate text-xs ${online ? 'text-online' : 'text-fg-muted'}`}
               >
-                {friend.online ? 'online' : `@${friend.username}`}
+                {online
+                  ? 'online'
+                  : lastSeenAt
+                    ? formatLastSeen(lastSeenAt)
+                    : `@${friend.username}`}
               </span>
             </div>
           </>

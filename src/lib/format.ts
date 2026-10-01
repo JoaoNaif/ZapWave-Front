@@ -9,7 +9,7 @@ export function formatShortDate(iso: string) {
   const date = new Date(iso)
   // round (não floor) por causa do horário de verão: um dia pode ter 23h ou 25h
   const daysAgo = Math.round(
-    (startOfDay(new Date()).getTime() - startOfDay(date).getTime()) / DAY_MS,
+    (startOfDay(new Date()).getTime() - startOfDay(date).getTime()) / DAY_MS
   )
 
   if (daysAgo <= 0) {
@@ -39,7 +39,7 @@ export function formatTime(iso: string) {
 export function formatDayLabel(iso: string) {
   const date = new Date(iso)
   const daysAgo = Math.round(
-    (startOfDay(new Date()).getTime() - startOfDay(date).getTime()) / DAY_MS,
+    (startOfDay(new Date()).getTime() - startOfDay(date).getTime()) / DAY_MS
   )
 
   if (daysAgo <= 0) return 'Hoje'
@@ -56,4 +56,22 @@ export function formatDayLabel(iso: string) {
 
 export function isSameDay(a: string, b: string) {
   return startOfDay(new Date(a)).getTime() === startOfDay(new Date(b)).getTime()
+}
+
+// Cabeçalho da DM: "visto por último hoje às 14:32", "ontem às 09:10",
+// "segunda às 18:00", "em 12/09"
+export function formatLastSeen(iso: string) {
+  const date = new Date(iso)
+  const daysAgo = Math.round(
+    (startOfDay(new Date()).getTime() - startOfDay(date).getTime()) / DAY_MS
+  )
+  const time = formatTime(iso)
+
+  if (daysAgo <= 0) return `visto por último hoje às ${time}`
+  if (daysAgo === 1) return `visto por último ontem às ${time}`
+  if (daysAgo < 7) {
+    const weekday = date.toLocaleDateString('pt-BR', { weekday: 'long' })
+    return `visto por último ${weekday} às ${time}`
+  }
+  return `visto por último em ${date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`
 }
