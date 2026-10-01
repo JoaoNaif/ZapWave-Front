@@ -121,7 +121,9 @@ function RoleBadge({ role }: { role: RoomRole }) {
   return (
     <span
       className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-        role === 'owner' ? 'bg-primary/10 text-primary' : 'bg-elevated text-fg-muted'
+        role === 'owner'
+          ? 'bg-primary/10 text-primary'
+          : 'bg-elevated text-fg-muted'
       }`}
     >
       {roleLabel[role]}

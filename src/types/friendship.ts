@@ -1,3 +1,4 @@
+import type { LastMessagePreviewDto } from './chat'
 import type { UserSummaryDto } from './user'
 
 type Iso = string
@@ -15,6 +16,8 @@ export interface FriendshipDto {
 export interface FriendDto extends UserSummaryDto {
   online: boolean
   lastMessageAt: Iso | null
+  // Prévia da última mensagem da DM (null = sem DM ou sem mensagem)
+  lastMessage: LastMessagePreviewDto | null
   // Mensagens do amigo na DM que eu ainda não li (0 se não há DM)
   unreadCount: number
 }

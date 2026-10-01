@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   AlertIcon,
+  CheckCheckIcon,
   CheckIcon,
   ChevronDownIcon,
   ClockIcon,
@@ -23,12 +24,16 @@ interface MessageListProps {
   meId: string
   // Só em grupo: senderId → nome, para mostrar quem falou
   senderNames?: Map<string, string>
+  // Até onde os outros leram (menor cursor). undefined = sem ✓✓ (ninguém
+  // mais na conversa, ou ainda carregando)
+  othersReadUpTo?: string
 }
 
 export function MessageList({
   conversationId,
   meId,
   senderNames,
+  othersReadUpTo,
 }: MessageListProps) {
   const { store } = useChat()
   const state = useConversation(conversationId)
@@ -207,6 +212,11 @@ export function MessageList({
                       : undefined
                   }
                   onRetry={() => store.retry(conversationId, message.id)}
+                  read={
+                    othersReadUpTo !== undefined &&
+                    message.status === 'sent' &&
+                    message.id <= othersReadUpTo
+                  }
                 />
               </div>
             )
@@ -259,6 +269,8 @@ interface MessageBubbleProps {
   grouped: boolean
   onRetry: () => void
   senderName?: string
+  // Minha mensagem já lida pelo(s) outro(s)
+  read: boolean
 }
 
 function MessageBubble({
@@ -267,6 +279,7 @@ function MessageBubble({
   grouped,
   onRetry,
   senderName,
+  read,
 }: MessageBubbleProps) {
   return (
     <div
@@ -295,12 +308,16 @@ function MessageBubble({
           <span className="float-right mt-1.5 ml-3 flex items-center gap-1 text-[11px] leading-none text-fg-muted">
             {formatTime(message.createdAt)}
             {mine && message.status === 'sending' && (
-              <ClockIcon className="size-3" />
+              <ClockIcon className="size-3" label="Enviando" />
             )}
-            {/* ✓ = chegou no servidor. ✓✓ (lida) depende de rota nova no back */}
-            {mine && message.status === 'sent' && (
-              <CheckIcon className="size-3.5" />
-            )}
+            {/* ✓ = chegou no servidor; ✓✓ em aqua = lida (por todos, em grupo) */}
+            {mine &&
+              message.status === 'sent' &&
+              (read ? (
+                <CheckCheckIcon className="size-3.5 text-online" label="Lida" />
+              ) : (
+                <CheckIcon className="size-3.5" label="Enviada" />
+              ))}
           </span>
         </p>
       </div>

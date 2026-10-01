@@ -175,6 +175,7 @@ como `conversationId`. A mensagem só traz `senderId`: o nome vem de `/rooms/:id
 | `POST /message` | `{ conversationId, body, clientMessageId? }` (1–4000 chars, trimmed) | 201 `{ message }`. **Idempotente por `clientMessageId`** |
 | `GET /conversation-history/:id?before=<ulid>&limit=<1..100>` | limit padrão 50 | 200 `{ messages, hasMore }`, **mais nova → mais antiga**. Paginar: `before` = id da mais antiga |
 | `PUT /mark-conversation` | `{ conversationId, messageId }` | 200 `{ read }` — recibo de leitura (✓✓), por usuário |
+| `GET /conversations/:id/reads` | — | 200 `{ reads: ConversationReadDto[] }`: cursor de leitura dos **outros** membros (✓✓ = `id <= lastReadMessageId`; em grupo, o menor); 404 se não sou membro |
 | `PUT /message-ack` | `{ deviceId, messageId }` | 200 `{ acknowledged }` — alternativa HTTP ao ack do WS |
 | `GET /presence/:userId` | — | 200 `{ presence: { userId, online, lastSeenAt } }` (polling) |
 
@@ -202,7 +203,8 @@ interface FriendshipDto {
   createdAt: Iso; updatedAt: Iso
 }
 
-interface FriendDto extends UserSummaryDto { online: boolean; lastMessageAt: Iso | null; unreadCount: number }
+interface LastMessagePreviewDto { id: string; senderId: string; senderDisplayName: string; body: string /* até 100 chars + "…" */; createdAt: Iso }
+interface FriendDto extends UserSummaryDto { online: boolean; lastMessageAt: Iso | null; lastMessage: LastMessagePreviewDto | null; unreadCount: number }
 interface FriendRequestDto { friendshipId: string; sender: UserSummaryDto; createdAt: Iso }
 
 interface ConversationDto { id: string; type: 'dm' | 'room'; name: string | null; createdById: string; createdAt: Iso }
@@ -218,11 +220,12 @@ interface MessageDto {
   body: string; clientMessageId: string | null; createdAt: Iso
 }
 
+interface ConversationReadDto { userId: string; lastReadMessageId: string | null } // de cada OUTRO membro
 interface PresenceDto { userId: string; online: boolean; lastSeenAt: Iso | null }
 interface NotificationDto { id: string; recipientId: string; title: string; content: string; readAt: Iso | null; createdAt: Iso }
 
 // Salas: listagens (id = conversationId; em RoomMemberSummaryDto, id = id do USUÁRIO)
-interface MyRoomDto { id: string; name: string; role: 'owner' | 'admin' | 'member'; memberCount: number; lastMessageAt: Iso | null; unreadCount: number }
+interface MyRoomDto { id: string; name: string; role: 'owner' | 'admin' | 'member'; memberCount: number; lastMessageAt: Iso | null; lastMessage: LastMessagePreviewDto | null; unreadCount: number }
 interface ReceivedRoomInviteDto { inviteId: string; room: { id: string; name: string }; inviter: UserSummaryDto; createdAt: Iso }
 interface RoomMemberSummaryDto extends UserSummaryDto { role: 'owner' | 'admin' | 'member' }
 
@@ -293,7 +296,6 @@ está aberta e visível, `PUT /mark-conversation`.
 
 Não existem ainda; serão criadas **junto com o front**, quando a tela precisar:
 
-- Prévia da última mensagem nas listas; ✓✓ de leitura do outro lado
 - Convidar de novo quem recusou ou saiu de uma sala (hoje é 409 para sempre)
 - Meus devices
 - "Digitando…" (frame `typing`)

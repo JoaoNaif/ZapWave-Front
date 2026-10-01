@@ -3,6 +3,8 @@ import { NavLink } from 'react-router'
 import { Avatar } from '@/components/Avatar'
 import { CountBadge } from '@/components/CountBadge'
 import { SearchIcon } from '@/components/icons'
+import { useMe } from '@/features/auth/hooks'
+import { LastMessagePreview } from '@/features/chat/components/LastMessagePreview'
 import { useUnreadSummary } from '@/features/chat/unread'
 import { formatShortDate } from '@/lib/format'
 import { useRooms } from '../hooks'
@@ -16,6 +18,7 @@ interface RoomListProps {
 export function RoomList({ collapsed = false, onCreateRoom }: RoomListProps) {
   const rooms = useRooms()
   const unread = useUnreadSummary()
+  const meId = useMe().data?.user.id ?? ''
   const [search, setSearch] = useState('')
 
   if (rooms.isPending) {
@@ -140,10 +143,13 @@ export function RoomList({ collapsed = false, onCreateRoom }: RoomListProps) {
                           )}
                         </span>
                         <span className="flex items-center justify-between gap-2">
-                          <span className="truncate text-xs text-fg-muted">
-                            {room.memberCount}{' '}
-                            {room.memberCount === 1 ? 'membro' : 'membros'}
-                          </span>
+                          <LastMessagePreview
+                            preview={room.lastMessage}
+                            meId={meId}
+                            isRoom
+                            unread={unreadCount > 0}
+                            fallback={`${room.memberCount} ${room.memberCount === 1 ? 'membro' : 'membros'}`}
+                          />
                           <CountBadge count={unreadCount} />
                         </span>
                       </span>

@@ -21,7 +21,7 @@ export async function createRoom(name: string) {
 // GET /rooms/:id/members → 200 { members }. 404 = não existe ou não sou membro
 export async function fetchRoomMembers(roomId: string) {
   const response = await api.get<{ members: RoomMemberSummaryDto[] }>(
-    `/rooms/${roomId}/members`,
+    `/rooms/${roomId}/members`
   )
   return response.data.members
 }
@@ -29,7 +29,7 @@ export async function fetchRoomMembers(roomId: string) {
 // GET /room-invites → 200 { roomInvites }. Só os recebidos e pendentes
 export async function fetchRoomInvites() {
   const response = await api.get<{ roomInvites: ReceivedRoomInviteDto[] }>(
-    '/room-invites',
+    '/room-invites'
   )
   return response.data.roomInvites
 }

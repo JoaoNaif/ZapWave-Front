@@ -40,3 +40,20 @@ export interface PresenceDto {
   online: boolean
   lastSeenAt: Iso | null
 }
+
+// Última mensagem de uma conversa, para a prévia nas listas (/friends, /rooms).
+// body já vem cortado em 100 caracteres (com "…")
+export interface LastMessagePreviewDto {
+  id: string
+  senderId: string
+  senderDisplayName: string
+  body: string
+  createdAt: Iso
+}
+
+// GET /conversations/:id/reads: até onde cada OUTRO membro leu (o meu fica
+// de fora). null = nunca leu
+export interface ConversationReadDto {
+  userId: string
+  lastReadMessageId: string | null
+}

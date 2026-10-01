@@ -3,7 +3,12 @@ import { useQueryClient } from '@tanstack/react-query'
 import { friendsQueryKey } from '@/features/friendship/hooks'
 import { roomsQueryKey } from '@/features/rooms/hooks'
 import { markConversationRead } from '../api'
-import { useChat, useConversation } from '../context'
+import {
+  readsQueryKey,
+  useChat,
+  useConversation,
+  useConversationReads,
+} from '../context'
 import { Composer } from './Composer'
 import { MessageList } from './MessageList'
 
@@ -28,6 +33,35 @@ export function Conversation({
   const lastId = messages.findLast((message) => message.status === 'sent')?.id
   useMarkAsRead(conversationId, lastId)
 
+  // ✓✓: minha mensagem conta como lida quando TODOS os outros leram até ela,
+  // ou seja, o menor cursor entre eles. ULID: comparar string = comparar tempo.
+  // '' = alguém nunca leu (nenhum id é <= ''). Sozinho no grupo: sem ✓✓
+  const reads = useConversationReads(conversationId)
+  const othersReadUpTo =
+    reads.data && reads.data.length > 0
+      ? reads.data
+          .map((read) => read.lastReadMessageId ?? '')
+          .reduce((min, id) => (id < min ? id : min))
+      : undefined
+
+  // O outro respondeu = abriu a conversa e marcou como lida: busca o ✓✓ logo,
+  // sem esperar o polling (o mark-conversation dele sai logo depois do envio)
+  const lastFromOthers = messages.findLast(
+    (message) => message.status === 'sent' && message.senderId !== meId
+  )?.id
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (!lastFromOthers) return
+    const timer = setTimeout(
+      () =>
+        queryClient.invalidateQueries({
+          queryKey: readsQueryKey(conversationId),
+        }),
+      1500
+    )
+    return () => clearTimeout(timer)
+  }, [lastFromOthers, conversationId, queryClient])
+
   // Conversa aberta = o que chega nela não vira "não lida" (com a aba visível)
   useEffect(() => {
     store.setActive(conversationId)
@@ -51,6 +85,7 @@ export function Conversation({
         conversationId={conversationId}
         meId={meId}
         senderNames={senderNames}
+        othersReadUpTo={othersReadUpTo}
       />
       <Composer onSend={(body) => store.send(conversationId, meId, body)} />
     </>

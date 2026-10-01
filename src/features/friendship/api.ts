@@ -17,7 +17,7 @@ export async function fetchFriends() {
 export async function fetchUserByUsername(username: string) {
   try {
     const response = await api.get<{ user: UserSummaryDto }>(
-      `/users/${encodeURIComponent(username)}`,
+      `/users/${encodeURIComponent(username)}`
     )
     return response.data.user
   } catch (error) {
@@ -30,7 +30,7 @@ export async function fetchUserByUsername(username: string) {
 export async function inviteFriendship(recipientId: string) {
   const response = await api.post<{ friendship: FriendshipDto }>(
     '/invite-friendship',
-    { recipientId },
+    { recipientId }
   )
   return response.data.friendship
 }
@@ -38,7 +38,7 @@ export async function inviteFriendship(recipientId: string) {
 // GET /friend-requests → 200 { friendRequests }. Só os recebidos e ainda pendentes
 export async function fetchFriendRequests() {
   const response = await api.get<{ friendRequests: FriendRequestDto[] }>(
-    '/friend-requests',
+    '/friend-requests'
   )
   return response.data.friendRequests
 }

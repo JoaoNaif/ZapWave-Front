@@ -1,3 +1,4 @@
+import type { LastMessagePreviewDto } from './chat'
 import type { UserSummaryDto } from './user'
 
 type Iso = string
@@ -11,6 +12,8 @@ export interface MyRoomDto {
   role: RoomRole
   memberCount: number
   lastMessageAt: Iso | null
+  // Prévia da última mensagem (null = sala sem mensagem)
+  lastMessage: LastMessagePreviewDto | null
   // Mensagens dos outros depois do meu lastReadMessageId (ou de quando entrei)
   unreadCount: number
 }

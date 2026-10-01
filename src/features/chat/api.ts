@@ -2,6 +2,7 @@ import { api } from '@/lib/api'
 import type {
   ConversationDto,
   ConversationMemberDto,
+  ConversationReadDto,
   MessageDto,
 } from '@/types/chat'
 
@@ -45,4 +46,13 @@ export async function markConversationRead(data: {
   messageId: string
 }) {
   await api.put('/mark-conversation', data)
+}
+
+// GET /conversations/:id/reads → 200 { reads }: cursor de leitura dos OUTROS
+// membros (para o ✓✓). 404 = não sou membro
+export async function fetchConversationReads(conversationId: string) {
+  const response = await api.get<{ reads: ConversationReadDto[] }>(
+    `/conversations/${conversationId}/reads`
+  )
+  return response.data.reads
 }

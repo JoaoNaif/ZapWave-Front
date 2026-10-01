@@ -47,7 +47,7 @@ function useRemoveRequest() {
     queryClient.setQueryData<FriendRequestDto[]>(
       friendRequestsQueryKey,
       (requests) =>
-        requests?.filter((request) => request.friendshipId !== friendshipId),
+        requests?.filter((request) => request.friendshipId !== friendshipId)
     )
     return queryClient.invalidateQueries({ queryKey: friendRequestsQueryKey })
   }

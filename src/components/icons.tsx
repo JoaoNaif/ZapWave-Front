@@ -3,10 +3,14 @@ import type { ReactNode } from 'react'
 // Ícones no traço do Lucide (24x24, stroke). Tamanho e cor pela className.
 interface IconProps {
   className?: string
+  // Ícone que carrega informação sozinho (ex.: ✓✓ "Lida"): vira texto para
+  // leitor de tela. Sem label, é decorativo e fica escondido
+  label?: string
 }
 
 function Icon({
   className = 'size-5',
+  label,
   children,
 }: IconProps & { children: ReactNode }) {
   return (
@@ -17,7 +21,9 @@ function Icon({
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      aria-hidden="true"
+      role={label ? 'img' : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
       className={className}
     >
       {children}
@@ -198,6 +204,16 @@ export function ChevronDownIcon(props: IconProps) {
   return (
     <Icon {...props}>
       <path d="m6 9 6 6 6-6" />
+    </Icon>
+  )
+}
+
+// ✓✓ (lida)
+export function CheckCheckIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M18 6 7 17l-5-5" />
+      <path d="m22 10-7.5 7.5L13 16" />
     </Icon>
   )
 }

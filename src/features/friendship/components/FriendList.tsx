@@ -3,6 +3,8 @@ import { NavLink } from 'react-router'
 import { Avatar } from '@/components/Avatar'
 import { CountBadge } from '@/components/CountBadge'
 import { SearchIcon } from '@/components/icons'
+import { useMe } from '@/features/auth/hooks'
+import { LastMessagePreview } from '@/features/chat/components/LastMessagePreview'
 import { useUnreadSummary } from '@/features/chat/unread'
 import { formatShortDate } from '@/lib/format'
 import { useFriends } from '../hooks'
@@ -19,6 +21,7 @@ export function FriendList({
 }: FriendListProps) {
   const friends = useFriends()
   const unread = useUnreadSummary()
+  const meId = useMe().data?.user.id ?? ''
   const [search, setSearch] = useState('')
 
   if (friends.isPending) {
@@ -151,9 +154,12 @@ export function FriendList({
                           )}
                         </span>
                         <span className="flex items-center justify-between gap-2">
-                          <span className="truncate text-xs text-fg-muted">
-                            @{friend.username}
-                          </span>
+                          <LastMessagePreview
+                            preview={friend.lastMessage}
+                            meId={meId}
+                            unread={unreadCount > 0}
+                            fallback={`@${friend.username}`}
+                          />
                           <CountBadge count={unreadCount} />
                         </span>
                       </span>

@@ -51,7 +51,7 @@ function CreateRoomForm({ onCreated }: { onCreated: () => void }) {
           autoFocus
           autoComplete="off"
           placeholder="Ex.: Galera do futebol"
-          className="w-full rounded-lg border border-line bg-elevated px-3 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+          className="w-full rounded-lg border border-line bg-elevated px-3 py-2.5 text-sm text-fg transition outline-none placeholder:text-fg-subtle focus:border-primary focus:ring-2 focus:ring-primary/30"
           {...register('name')}
         />
         {errors.name ? (

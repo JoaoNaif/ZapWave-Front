@@ -63,7 +63,7 @@ function useRemoveInvite() {
   return (inviteId: string) => {
     queryClient.setQueryData<ReceivedRoomInviteDto[]>(
       roomInvitesQueryKey,
-      (invites) => invites?.filter((invite) => invite.inviteId !== inviteId),
+      (invites) => invites?.filter((invite) => invite.inviteId !== inviteId)
     )
     return queryClient.invalidateQueries({ queryKey: roomInvitesQueryKey })
   }

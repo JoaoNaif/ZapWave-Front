@@ -1,7 +1,7 @@
 import { createContext, useContext, useSyncExternalStore } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
-import { openDirectConversation } from './api'
+import { fetchConversationReads, openDirectConversation } from './api'
 import type { SocketStatus } from './socket'
 import type { ChatStore } from './store'
 
@@ -35,5 +35,20 @@ export function useDirectConversation(friendId: string) {
     retry: (count, error) =>
       !(isAxiosError(error) && error.response && error.response.status < 500) &&
       count < 2,
+  })
+}
+
+export const readsQueryKey = (conversationId: string) => [
+  'conversation-reads',
+  conversationId,
+]
+
+// Até onde os OUTROS leram (para o ✓✓). Não tem push: polling enquanto a
+// conversa está aberta, e de novo quando a aba volta a ficar visível
+export function useConversationReads(conversationId: string) {
+  return useQuery({
+    queryKey: readsQueryKey(conversationId),
+    queryFn: () => fetchConversationReads(conversationId),
+    refetchInterval: 10_000,
   })
 }
