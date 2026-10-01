@@ -18,7 +18,7 @@ export const roomsQueryKey = ['rooms']
 const roomInvitesQueryKey = ['room-invites']
 // Fora do prefixo ['rooms']: invalidar a lista de salas (a cada mensagem nova)
 // não deve rebuscar os membros
-const membersQueryKey = (roomId: string) => ['room-members', roomId]
+export const membersQueryKey = (roomId: string) => ['room-members', roomId]
 
 // Sem push para "fui adicionado/removido": polling, igual amigos
 export function useRooms() {

@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router'
 import { Avatar } from '@/components/Avatar'
+import { CountBadge } from '@/components/CountBadge'
 import { SearchIcon } from '@/components/icons'
+import { useUnreadSummary } from '@/features/chat/unread'
 import { formatShortDate } from '@/lib/format'
 import { useFriends } from '../hooks'
 
@@ -11,8 +13,12 @@ interface FriendListProps {
   onAddFriend: () => void
 }
 
-export function FriendList({ collapsed = false, onAddFriend }: FriendListProps) {
+export function FriendList({
+  collapsed = false,
+  onAddFriend,
+}: FriendListProps) {
   const friends = useFriends()
+  const unread = useUnreadSummary()
   const [search, setSearch] = useState('')
 
   if (friends.isPending) {
@@ -73,7 +79,7 @@ export function FriendList({ collapsed = false, onAddFriend }: FriendListProps) 
     ? friends.data.filter(
         (friend) =>
           friend.displayName.toLowerCase().includes(term) ||
-          friend.username.toLowerCase().includes(term),
+          friend.username.toLowerCase().includes(term)
       )
     : friends.data
 
@@ -89,56 +95,75 @@ export function FriendList({ collapsed = false, onAddFriend }: FriendListProps) 
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar amigo"
-              className="w-full rounded-lg border border-line bg-elevated py-2 pr-3 pl-9 text-sm text-fg placeholder:text-fg-subtle outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-lg border border-line bg-elevated py-2 pr-3 pl-9 text-sm text-fg transition outline-none placeholder:text-fg-subtle focus:border-primary focus:ring-2 focus:ring-primary/30"
             />
           </label>
         </div>
       )}
 
       <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-3">
-        {visible.map((friend) => (
-          <li key={friend.id}>
-            <NavLink
-              to={`/dm/${friend.id}`}
-              title={collapsed ? friend.displayName : undefined}
-              className={({ isActive }) =>
-                `relative flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-elevated ${
-                  collapsed ? 'justify-center' : ''
-                } ${isActive ? 'bg-elevated' : ''}`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <span className="absolute top-2 bottom-2 -left-3 w-1 rounded-r-full bg-primary" />
-                  )}
-                  <Avatar
-                    id={friend.id}
-                    name={friend.displayName}
-                    online={friend.online}
-                  />
-                  {!collapsed && (
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="flex items-baseline justify-between gap-2">
-                        <span className="truncate text-sm font-medium">
-                          {friend.displayName}
-                        </span>
-                        {friend.lastMessageAt && (
-                          <span className="shrink-0 text-xs text-fg-subtle">
-                            {formatShortDate(friend.lastMessageAt)}
-                          </span>
-                        )}
-                      </span>
-                      <span className="truncate text-xs text-fg-muted">
-                        @{friend.username}
-                      </span>
+        {visible.map((friend) => {
+          const unreadCount = unread.byFriend.get(friend.id) ?? 0
+          return (
+            <li key={friend.id}>
+              <NavLink
+                to={`/dm/${friend.id}`}
+                title={collapsed ? friend.displayName : undefined}
+                className={({ isActive }) =>
+                  `relative flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-elevated ${
+                    collapsed ? 'justify-center' : ''
+                  } ${isActive ? 'bg-elevated' : ''}`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <span className="absolute top-2 bottom-2 -left-3 w-1 rounded-r-full bg-primary" />
+                    )}
+                    <span className="relative flex">
+                      <Avatar
+                        id={friend.id}
+                        name={friend.displayName}
+                        online={friend.online}
+                      />
+                      {/* Recolhida: o contador fica em cima do avatar */}
+                      {collapsed && (
+                        <CountBadge
+                          count={unreadCount}
+                          className="absolute -top-1 -right-1 ring-2 ring-sidebar"
+                        />
+                      )}
                     </span>
-                  )}
-                </>
-              )}
-            </NavLink>
-          </li>
-        ))}
+                    {!collapsed && (
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span
+                            className={`truncate text-sm ${unreadCount > 0 ? 'font-semibold' : 'font-medium'}`}
+                          >
+                            {friend.displayName}
+                          </span>
+                          {friend.lastMessageAt && (
+                            <span
+                              className={`shrink-0 text-xs ${unreadCount > 0 ? 'text-primary' : 'text-fg-subtle'}`}
+                            >
+                              {formatShortDate(friend.lastMessageAt)}
+                            </span>
+                          )}
+                        </span>
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="truncate text-xs text-fg-muted">
+                            @{friend.username}
+                          </span>
+                          <CountBadge count={unreadCount} />
+                        </span>
+                      </span>
+                    )}
+                  </>
+                )}
+              </NavLink>
+            </li>
+          )
+        })}
 
         {visible.length === 0 && (
           <li className="px-2 py-6 text-center text-sm text-fg-subtle">

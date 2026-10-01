@@ -28,7 +28,11 @@ export function Composer({ onSend, disabled = false }: ComposerProps) {
   // Enter envia, Shift+Enter quebra linha. isComposing: não envia no meio de
   // um acento/IME
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+    if (
+      event.key === 'Enter' &&
+      !event.shiftKey &&
+      !event.nativeEvent.isComposing
+    ) {
       event.preventDefault()
       submit()
     }
@@ -51,7 +55,7 @@ export function Composer({ onSend, disabled = false }: ComposerProps) {
             placeholder="Digite uma mensagem"
             // Foco automático só no desktop: no celular abriria o teclado sozinho
             autoFocus={window.matchMedia('(min-width: 768px)').matches}
-            className="field-sizing-content block max-h-40 min-h-10 w-full resize-none rounded-xl border border-line bg-elevated px-3 py-2.5 text-sm text-fg placeholder:text-fg-subtle outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+            className="block field-sizing-content max-h-40 min-h-10 w-full resize-none rounded-xl border border-line bg-elevated px-3 py-2.5 text-sm text-fg transition outline-none placeholder:text-fg-subtle focus:border-primary focus:ring-2 focus:ring-primary/30"
           />
         </label>
         <button

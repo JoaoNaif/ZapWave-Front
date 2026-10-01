@@ -41,7 +41,7 @@ export function AppLayout() {
       ? 'rooms'
       : location.pathname.startsWith('/dm/')
         ? 'friends'
-        : readTab(),
+        : readTab()
   )
   // Dentro da conversa o mobile usa a tela toda: sem barra de baixo
   const inDm = useMatch('/dm/:friendId')
@@ -87,7 +87,7 @@ export function AppLayout() {
   const closeDialog = () => setDialog(null)
 
   return (
-    <ChatProvider deviceId={me.data.deviceId}>
+    <ChatProvider deviceId={me.data.deviceId} meId={me.data.user.id}>
       <div className="flex h-dvh flex-col md:flex-row">
         <Sidebar {...context} />
 

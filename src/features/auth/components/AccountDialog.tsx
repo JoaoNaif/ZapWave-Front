@@ -1,6 +1,7 @@
 import { Avatar } from '@/components/Avatar'
 import { Dialog } from '@/components/Dialog'
 import { LogOutIcon } from '@/components/icons'
+import { NotificationSetting } from '@/features/chat/components/NotificationSetting'
 import type { Me } from '../api'
 import { useLogout } from '../hooks'
 
@@ -21,6 +22,8 @@ export function AccountDialog({ me, open, onClose }: AccountDialogProps) {
         <p className="text-sm text-fg-muted">@{me.user.username}</p>
         <p className="text-sm text-fg-subtle">{me.user.email}</p>
       </div>
+
+      <NotificationSetting />
 
       {logout.isError && (
         <p className="text-xs text-danger">

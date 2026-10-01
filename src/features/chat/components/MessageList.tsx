@@ -214,7 +214,7 @@ function MessageBubble({
             {senderName}
           </p>
         )}
-        <p className="whitespace-pre-wrap wrap-break-word">
+        <p className="wrap-break-word whitespace-pre-wrap">
           {message.body}
           {/* Horário "flutuando" no fim da última linha, estilo WhatsApp */}
           <span className="float-right mt-1.5 ml-3 flex items-center gap-1 text-[11px] leading-none text-fg-muted">

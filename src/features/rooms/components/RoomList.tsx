@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router'
 import { Avatar } from '@/components/Avatar'
+import { CountBadge } from '@/components/CountBadge'
 import { SearchIcon } from '@/components/icons'
+import { useUnreadSummary } from '@/features/chat/unread'
 import { formatShortDate } from '@/lib/format'
 import { useRooms } from '../hooks'
 
@@ -13,6 +15,7 @@ interface RoomListProps {
 
 export function RoomList({ collapsed = false, onCreateRoom }: RoomListProps) {
   const rooms = useRooms()
+  const unread = useUnreadSummary()
   const [search, setSearch] = useState('')
 
   if (rooms.isPending) {
@@ -85,53 +88,72 @@ export function RoomList({ collapsed = false, onCreateRoom }: RoomListProps) {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar grupo"
-              className="w-full rounded-lg border border-line bg-elevated py-2 pr-3 pl-9 text-sm text-fg placeholder:text-fg-subtle outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-lg border border-line bg-elevated py-2 pr-3 pl-9 text-sm text-fg transition outline-none placeholder:text-fg-subtle focus:border-primary focus:ring-2 focus:ring-primary/30"
             />
           </label>
         </div>
       )}
 
       <ul className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-3">
-        {visible.map((room) => (
-          <li key={room.id}>
-            <NavLink
-              to={`/room/${room.id}`}
-              title={collapsed ? room.name : undefined}
-              className={({ isActive }) =>
-                `relative flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-elevated ${
-                  collapsed ? 'justify-center' : ''
-                } ${isActive ? 'bg-elevated' : ''}`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {isActive && (
-                    <span className="absolute top-2 bottom-2 -left-3 w-1 rounded-r-full bg-primary" />
-                  )}
-                  <Avatar id={room.id} name={room.name} shape="square" />
-                  {!collapsed && (
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="flex items-baseline justify-between gap-2">
-                        <span className="truncate text-sm font-medium">
-                          {room.name}
-                        </span>
-                        {room.lastMessageAt && (
-                          <span className="shrink-0 text-xs text-fg-subtle">
-                            {formatShortDate(room.lastMessageAt)}
-                          </span>
-                        )}
-                      </span>
-                      <span className="truncate text-xs text-fg-muted">
-                        {room.memberCount}{' '}
-                        {room.memberCount === 1 ? 'membro' : 'membros'}
-                      </span>
+        {visible.map((room) => {
+          const unreadCount = unread.byRoom.get(room.id) ?? 0
+          return (
+            <li key={room.id}>
+              <NavLink
+                to={`/room/${room.id}`}
+                title={collapsed ? room.name : undefined}
+                className={({ isActive }) =>
+                  `relative flex items-center gap-3 rounded-lg px-2 py-2 transition hover:bg-elevated ${
+                    collapsed ? 'justify-center' : ''
+                  } ${isActive ? 'bg-elevated' : ''}`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {isActive && (
+                      <span className="absolute top-2 bottom-2 -left-3 w-1 rounded-r-full bg-primary" />
+                    )}
+                    <span className="relative flex">
+                      <Avatar id={room.id} name={room.name} shape="square" />
+                      {/* Recolhida: o contador fica em cima do avatar */}
+                      {collapsed && (
+                        <CountBadge
+                          count={unreadCount}
+                          className="absolute -top-1 -right-1 ring-2 ring-sidebar"
+                        />
+                      )}
                     </span>
-                  )}
-                </>
-              )}
-            </NavLink>
-          </li>
-        ))}
+                    {!collapsed && (
+                      <span className="flex min-w-0 flex-1 flex-col">
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span
+                            className={`truncate text-sm ${unreadCount > 0 ? 'font-semibold' : 'font-medium'}`}
+                          >
+                            {room.name}
+                          </span>
+                          {room.lastMessageAt && (
+                            <span
+                              className={`shrink-0 text-xs ${unreadCount > 0 ? 'text-primary' : 'text-fg-subtle'}`}
+                            >
+                              {formatShortDate(room.lastMessageAt)}
+                            </span>
+                          )}
+                        </span>
+                        <span className="flex items-center justify-between gap-2">
+                          <span className="truncate text-xs text-fg-muted">
+                            {room.memberCount}{' '}
+                            {room.memberCount === 1 ? 'membro' : 'membros'}
+                          </span>
+                          <CountBadge count={unreadCount} />
+                        </span>
+                      </span>
+                    )}
+                  </>
+                )}
+              </NavLink>
+            </li>
+          )
+        })}
 
         {visible.length === 0 && (
           <li className="px-2 py-6 text-center text-sm text-fg-subtle">

@@ -19,11 +19,11 @@ export async function openDirectConversation(friendId: string) {
 // Paginar para trás: before = id da mais antiga que já tenho
 export async function fetchConversationHistory(
   conversationId: string,
-  before?: string,
+  before?: string
 ) {
   const response = await api.get<{ messages: MessageDto[]; hasMore: boolean }>(
     `/conversation-history/${conversationId}`,
-    { params: { before, limit: 50 } },
+    { params: { before, limit: 50 } }
   )
   return response.data
 }

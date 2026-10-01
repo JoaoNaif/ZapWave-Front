@@ -9,11 +9,7 @@ const MAX_RETRY_DELAY_MS = 30_000
 const decoder = new TextDecoder()
 
 // follower = outra aba deste navegador tem o socket e repassa as mensagens
-export type SocketStatus =
-  | 'connecting'
-  | 'open'
-  | 'reconnecting'
-  | 'follower'
+export type SocketStatus = 'connecting' | 'open' | 'reconnecting' | 'follower'
 
 interface ChatSocketOptions {
   deviceId: string
@@ -50,7 +46,7 @@ export function startChatSocket(options: ChatSocketOptions) {
     .request(
       `zapwave:ws:${options.deviceId}`,
       { signal: controller.signal },
-      () => lead(options, channel, controller.signal),
+      () => lead(options, channel, controller.signal)
     )
     // AbortError: a aba desmontou enquanto esperava o lock
     .catch(() => {})
@@ -65,7 +61,7 @@ export function startChatSocket(options: ChatSocketOptions) {
 function lead(
   options: ChatSocketOptions,
   channel: BroadcastChannel,
-  signal: AbortSignal,
+  signal: AbortSignal
 ) {
   return new Promise<void>((resolve) => {
     if (signal.aborted) return resolve()
@@ -120,7 +116,7 @@ function lead(
           frame = JSON.parse(
             typeof event.data === 'string'
               ? event.data
-              : decoder.decode(event.data),
+              : decoder.decode(event.data)
           )
         } catch {
           return
@@ -158,7 +154,7 @@ function lead(
         socket?.close(1000)
         resolve()
       },
-      { once: true },
+      { once: true }
     )
 
     connect()

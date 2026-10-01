@@ -9,7 +9,7 @@ import {
   inviteFriendship,
 } from './api'
 
-const friendsQueryKey = ['friends']
+export const friendsQueryKey = ['friends']
 const friendRequestsQueryKey = ['friend-requests']
 
 // Presença não tem push: o polling mantém a bolinha de online atualizada

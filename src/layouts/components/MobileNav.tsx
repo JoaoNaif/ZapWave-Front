@@ -8,6 +8,7 @@ import {
   UserPlusIcon,
   UsersIcon,
 } from '@/components/icons'
+import { useUnreadSummary } from '@/features/chat/unread'
 import { usePendingRequestsCount, type AppContext } from '../app-context'
 
 const itemClass =
@@ -17,18 +18,29 @@ const itemClass =
 // conversa some (quem decide é o AppLayout)
 export function MobileNav({ me, openDialog, tab, setTab }: AppContext) {
   const pendingCount = usePendingRequestsCount()
+  const unread = useUnreadSummary()
 
   return (
     <nav className="flex border-t border-line bg-sidebar pb-[env(safe-area-inset-bottom)] md:hidden">
       <NavButton
-        icon={<UsersIcon className="size-6" />}
+        icon={
+          <WithBadge
+            count={unread.friendsTotal}
+            icon={<UsersIcon className="size-6" />}
+          />
+        }
         label="Amigos"
         active={tab === 'friends'}
         onClick={() => setTab('friends')}
       />
 
       <NavButton
-        icon={<GroupIcon className="size-6" />}
+        icon={
+          <WithBadge
+            count={unread.roomsTotal}
+            icon={<GroupIcon className="size-6" />}
+          />
+        }
         label="Grupos"
         active={tab === 'rooms'}
         onClick={() => setTab('rooms')}
@@ -51,13 +63,10 @@ export function MobileNav({ me, openDialog, tab, setTab }: AppContext) {
 
       <NavButton
         icon={
-          <span className="relative">
-            <InboxIcon className="size-6" />
-            <CountBadge
-              count={pendingCount}
-              className="absolute -top-1.5 -right-2.5 ring-2 ring-sidebar"
-            />
-          </span>
+          <WithBadge
+            count={pendingCount}
+            icon={<InboxIcon className="size-6" />}
+          />
         }
         label="Pedidos"
         onClick={() => openDialog('requests')}
@@ -69,6 +78,19 @@ export function MobileNav({ me, openDialog, tab, setTab }: AppContext) {
         onClick={() => openDialog('account')}
       />
     </nav>
+  )
+}
+
+// Ícone com contador no canto (não lidas, pedidos)
+function WithBadge({ icon, count }: { icon: ReactNode; count: number }) {
+  return (
+    <span className="relative">
+      {icon}
+      <CountBadge
+        count={count}
+        className="absolute -top-1.5 -right-2.5 ring-2 ring-sidebar"
+      />
+    </span>
   )
 }
 

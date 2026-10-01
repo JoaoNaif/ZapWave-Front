@@ -11,7 +11,9 @@ const IGNORED_URLS = ['/me', '/sessions', '/register']
 // Apaga tudo do usuário que saiu e marca como deslogado: o AppLayout vê null e
 // manda para o login (e desmonta o WebSocket)
 export function endSession(queryClient: QueryClient) {
-  queryClient.removeQueries({ predicate: (query) => query.queryKey[0] !== 'me' })
+  queryClient.removeQueries({
+    predicate: (query) => query.queryKey[0] !== 'me',
+  })
   queryClient.setQueryData(meQueryKey, null)
 }
 
@@ -30,7 +32,10 @@ export async function confirmSession(queryClient: QueryClient) {
 
 // Cookie expirou (24h) ou device foi revogado em outro lugar: qualquer 401
 // numa rota de negócio dispara a confirmação. O erro original segue normal
-export function installSessionGuard(api: AxiosInstance, queryClient: QueryClient) {
+export function installSessionGuard(
+  api: AxiosInstance,
+  queryClient: QueryClient
+) {
   api.interceptors.response.use(undefined, (error) => {
     const is401 = isAxiosError(error) && error.response?.status === 401
     const url = isAxiosError(error) ? error.config?.url : undefined

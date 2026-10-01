@@ -11,6 +11,8 @@ export interface MyRoomDto {
   role: RoomRole
   memberCount: number
   lastMessageAt: Iso | null
+  // Mensagens dos outros depois do meu lastReadMessageId (ou de quando entrei)
+  unreadCount: number
 }
 
 // GET /room-invites: convites recebidos e pendentes, mais recente primeiro

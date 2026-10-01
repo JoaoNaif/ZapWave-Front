@@ -46,7 +46,7 @@ function compare(a: ChatMessage, b: ChatMessage) {
 // substitui a otimista que tem o mesmo clientMessageId
 function merge(current: ChatMessage[], incoming: MessageDto[]) {
   const sentIds = new Set(
-    current.filter((m) => m.status === 'sent').map((m) => m.id),
+    current.filter((m) => m.status === 'sent').map((m) => m.id)
   )
   const next = [...current]
   let changed = false
@@ -60,7 +60,7 @@ function merge(current: ChatMessage[], incoming: MessageDto[]) {
     const pendingIndex = message.clientMessageId
       ? next.findIndex(
           (m) =>
-            m.status !== 'sent' && m.clientMessageId === message.clientMessageId,
+            m.status !== 'sent' && m.clientMessageId === message.clientMessageId
         )
       : -1
 
@@ -73,9 +73,38 @@ function merge(current: ChatMessage[], incoming: MessageDto[]) {
 
 export type ChatStore = ReturnType<typeof createChatStore>
 
-export function createChatStore() {
+// Não lidas que chegaram ao vivo, por conversa. senderId: numa DM quem manda é
+// sempre o amigo, e é assim que a lista de amigos acha o contador (ela só tem
+// o friendId). receivedAt: para somar só o que o back ainda não contou
+export interface LiveUnread {
+  senderId: string
+  receivedAt: number[]
+}
+
+// A base é o unreadCount do back (/friends e /rooms). Aqui fica só o que ele
+// ainda não sabe: o que chegou pelo WS depois da última busca da lista, e
+// quando cada conversa foi vista (o back só zera depois do mark-conversation)
+export interface UnreadState {
+  live: ReadonlyMap<string, LiveUnread>
+  // Última vez que a conversa foi vista na tela (Date.now())
+  seenAt: ReadonlyMap<string, number>
+  // Conversa aberta na tela (null = nenhuma)
+  active: string | null
+}
+
+export function createChatStore(meId: string) {
   const conversations = new Map<string, ConversationState>()
   const listeners = new Set<() => void>()
+  let unread: UnreadState = { live: new Map(), seenAt: new Map(), active: null }
+  const active = () => unread.active
+
+  function isBeingRead(conversationId: string) {
+    return active() === conversationId && document.visibilityState === 'visible'
+  }
+
+  function notify() {
+    for (const listener of listeners) listener()
+  }
 
   function get(conversationId: string) {
     return conversations.get(conversationId) ?? EMPTY
@@ -83,11 +112,11 @@ export function createChatStore() {
 
   function update(
     conversationId: string,
-    change: (state: ConversationState) => Partial<ConversationState>,
+    change: (state: ConversationState) => Partial<ConversationState>
   ) {
     const state = get(conversationId)
     conversations.set(conversationId, { ...state, ...change(state) })
-    for (const listener of listeners) listener()
+    notify()
   }
 
   function subscribe(listener: () => void) {
@@ -97,7 +126,28 @@ export function createChatStore() {
     }
   }
 
-  function receive(messages: MessageDto[]) {
+  function hasMessage(message: MessageDto) {
+    return get(message.conversationId).messages.some(
+      (m) => m.status === 'sent' && m.id === message.id
+    )
+  }
+
+  // live = veio pelo WebSocket. Só o ao vivo conta como não lida (histórico e
+  // resposta do POST não). Retorna as que viraram não lidas agora (para notificar)
+  function receive(messages: MessageDto[], { live = false } = {}) {
+    const fresh = live
+      ? messages.filter(
+          (message) => message.senderId !== meId && !hasMessage(message) // entrega "pelo menos uma vez": não conta 2×
+        )
+      : []
+    const unseen = fresh.filter(
+      (message) => !isBeingRead(message.conversationId)
+    )
+    // Chegou na conversa aberta: conta como vista agora
+    const readNow = fresh.filter((message) =>
+      isBeingRead(message.conversationId)
+    )
+
     const byConversation = new Map<string, MessageDto[]>()
     for (const message of messages) {
       const group = byConversation.get(message.conversationId) ?? []
@@ -109,6 +159,45 @@ export function createChatStore() {
         messages: merge(state.messages, incoming),
       }))
     }
+
+    if (unseen.length > 0 || readNow.length > 0) {
+      const now = Date.now()
+      const live = new Map(unread.live)
+      for (const message of unseen) {
+        const entry = live.get(message.conversationId)
+        live.set(message.conversationId, {
+          senderId: message.senderId,
+          receivedAt: [...(entry?.receivedAt ?? []), now],
+        })
+      }
+      const seenAt = new Map(unread.seenAt)
+      for (const message of readNow) seenAt.set(message.conversationId, now)
+      unread = { ...unread, live, seenAt }
+      notify()
+    }
+
+    return unseen
+  }
+
+  function getUnread() {
+    return unread
+  }
+
+  // Abriu a conversa (ou voltou para a aba com ela aberta): zera o que chegou
+  // ao vivo e guarda o momento, para ignorar o unreadCount antigo do back até
+  // a lista ser buscada de novo (depois do mark-conversation)
+  function markSeen(conversationId: string) {
+    const live = new Map(unread.live)
+    live.delete(conversationId)
+    const seenAt = new Map(unread.seenAt)
+    seenAt.set(conversationId, Date.now())
+    unread = { ...unread, live, seenAt }
+    notify()
+  }
+
+  function setActive(conversationId: string | null) {
+    unread = { ...unread, active: conversationId }
+    notify()
   }
 
   // Primeira página (a mais recente). refresh = depois de reconectar: faz merge
@@ -174,7 +263,7 @@ export function createChatStore() {
         messages: state.messages.map((m) =>
           m.status === 'sending' && m.id === message.id
             ? { ...m, status: 'failed' }
-            : m,
+            : m
         ),
       }))
     }
@@ -201,7 +290,7 @@ export function createChatStore() {
   // Reenvia com o MESMO clientMessageId: se a primeira chegou, o back não duplica
   function retry(conversationId: string, clientMessageId: string) {
     const failed = get(conversationId).messages.find(
-      (m) => m.status === 'failed' && m.id === clientMessageId,
+      (m) => m.status === 'failed' && m.id === clientMessageId
     )
     if (!failed) return
 
@@ -216,6 +305,9 @@ export function createChatStore() {
     get,
     subscribe,
     receive,
+    getUnread,
+    markSeen,
+    setActive,
     loadLatest,
     loadOlder,
     refreshLoaded,

@@ -15,6 +15,8 @@ export interface FriendshipDto {
 export interface FriendDto extends UserSummaryDto {
   online: boolean
   lastMessageAt: Iso | null
+  // Mensagens do amigo na DM que eu ainda não li (0 se não há DM)
+  unreadCount: number
 }
 
 // GET /friend-requests: pedidos recebidos e pendentes, mais recente primeiro

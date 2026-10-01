@@ -14,6 +14,7 @@ import { Logo } from '@/components/Logo'
 import { CountBadge } from '@/components/CountBadge'
 import { FriendList } from '@/features/friendship/components/FriendList'
 import { RoomList } from '@/features/rooms/components/RoomList'
+import { useUnreadSummary } from '@/features/chat/unread'
 import { usePendingRequestsCount, type AppContext } from '../app-context'
 
 const COLLAPSED_KEY = 'zapwave:sidebar-collapsed'
@@ -39,6 +40,7 @@ function saveCollapsed(value: boolean) {
 export function Sidebar({ me, openDialog, tab, setTab }: AppContext) {
   const [collapsed, setCollapsed] = useState(readCollapsed)
   const pendingCount = usePendingRequestsCount()
+  const unread = useUnreadSummary()
 
   function toggle() {
     setCollapsed(!collapsed)
@@ -62,7 +64,9 @@ export function Sidebar({ me, openDialog, tab, setTab }: AppContext) {
         <button
           type="button"
           onClick={toggle}
-          aria-label={collapsed ? 'Expandir barra lateral' : 'Recolher barra lateral'}
+          aria-label={
+            collapsed ? 'Expandir barra lateral' : 'Recolher barra lateral'
+          }
           title={collapsed ? 'Expandir' : 'Recolher'}
           className="cursor-pointer rounded-lg p-2 text-fg-muted transition hover:bg-elevated hover:text-fg"
         >
@@ -83,6 +87,7 @@ export function Sidebar({ me, openDialog, tab, setTab }: AppContext) {
           icon={<UsersIcon className="size-4.5" />}
           label="Amigos"
           onClick={() => setTab('friends')}
+          badge={unread.friendsTotal}
         />
         <TabButton
           collapsed={collapsed}
@@ -90,6 +95,7 @@ export function Sidebar({ me, openDialog, tab, setTab }: AppContext) {
           icon={<GroupIcon className="size-4.5" />}
           label="Grupos"
           onClick={() => setTab('rooms')}
+          badge={unread.roomsTotal}
         />
       </div>
 
@@ -170,9 +176,18 @@ interface TabButtonProps {
   icon: ReactNode
   label: string
   onClick: () => void
+  // Não lidas daquela aba: aparece mesmo com a outra aba aberta
+  badge: number
 }
 
-function TabButton({ collapsed, active, icon, label, onClick }: TabButtonProps) {
+function TabButton({
+  collapsed,
+  active,
+  icon,
+  label,
+  onClick,
+  badge,
+}: TabButtonProps) {
   return (
     <button
       type="button"
@@ -187,8 +202,21 @@ function TabButton({ collapsed, active, icon, label, onClick }: TabButtonProps) 
           : 'text-fg-muted hover:text-fg'
       }`}
     >
-      {icon}
-      {!collapsed && label}
+      <span className="relative flex">
+        {icon}
+        {collapsed && (
+          <CountBadge
+            count={badge}
+            className="absolute -top-2 -right-2.5 ring-2 ring-app"
+          />
+        )}
+      </span>
+      {!collapsed && (
+        <>
+          {label}
+          <CountBadge count={badge} />
+        </>
+      )}
     </button>
   )
 }

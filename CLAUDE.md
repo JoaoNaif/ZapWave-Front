@@ -202,7 +202,7 @@ interface FriendshipDto {
   createdAt: Iso; updatedAt: Iso
 }
 
-interface FriendDto extends UserSummaryDto { online: boolean; lastMessageAt: Iso | null }
+interface FriendDto extends UserSummaryDto { online: boolean; lastMessageAt: Iso | null; unreadCount: number }
 interface FriendRequestDto { friendshipId: string; sender: UserSummaryDto; createdAt: Iso }
 
 interface ConversationDto { id: string; type: 'dm' | 'room'; name: string | null; createdById: string; createdAt: Iso }
@@ -222,7 +222,7 @@ interface PresenceDto { userId: string; online: boolean; lastSeenAt: Iso | null 
 interface NotificationDto { id: string; recipientId: string; title: string; content: string; readAt: Iso | null; createdAt: Iso }
 
 // Salas: listagens (id = conversationId; em RoomMemberSummaryDto, id = id do USUÁRIO)
-interface MyRoomDto { id: string; name: string; role: 'owner' | 'admin' | 'member'; memberCount: number; lastMessageAt: Iso | null }
+interface MyRoomDto { id: string; name: string; role: 'owner' | 'admin' | 'member'; memberCount: number; lastMessageAt: Iso | null; unreadCount: number }
 interface ReceivedRoomInviteDto { inviteId: string; room: { id: string; name: string }; inviter: UserSummaryDto; createdAt: Iso }
 interface RoomMemberSummaryDto extends UserSummaryDto { role: 'owner' | 'admin' | 'member' }
 
@@ -293,10 +293,9 @@ está aberta e visível, `PUT /mark-conversation`.
 
 Não existem ainda; serão criadas **junto com o front**, quando a tela precisar:
 
-- **Listar minhas conversas** (DMs + salas, com última msg e não lidas): a maior lacuna
+- Prévia da última mensagem nas listas; ✓✓ de leitura do outro lado
 - Convidar de novo quem recusou ou saiu de uma sala (hoje é 409 para sempre)
 - Meus devices
-- Contador de não lidas (o dado `lastReadMessageId` existe, mas não é exposto)
 - "Digitando…" (frame `typing`)
 - Push de notificação/presença/pedidos; presença em lote
 - Texto de notificação legível (hoje tem uuid cru)
