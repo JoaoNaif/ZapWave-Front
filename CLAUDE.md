@@ -172,7 +172,9 @@ como `conversationId`. A mensagem só traz `senderId`: o nome vem de `/rooms/:id
 | Rota | Body / query | Resposta |
 |---|---|---|
 | `POST /direct-conversation` | `{ friendId }` | **sempre 201** `{ conversation, member, isNewConversation }` (find-or-create); 406 amizade não aceita |
-| `POST /message` | `{ conversationId, body, clientMessageId? }` (1–4000 chars, trimmed) | 201 `{ message }`. **Idempotente por `clientMessageId`** |
+| `POST /message` | `{ conversationId, body, clientMessageId?, replyToId? }` (1–4000 chars, trimmed; `replyToId` = ULID de msg da **mesma conversa**, senão 404) | 201 `{ message }`. **Idempotente por `clientMessageId`** |
+| `PATCH /message/:id` | `{ body }` (1–4000, trimmed) | 200 `{ message }` (com `editedAt`); só o autor (**403**); 404 se não existe/não sou membro |
+| `DELETE /message/:id` | — | 204; só o autor (**403**). Apaga de verdade; respostas a ela ficam com `replyTo: null` |
 | `GET /conversation-history/:id?before=<ulid>&limit=<1..100>` | limit padrão 50 | 200 `{ messages, hasMore }`, **mais nova → mais antiga**. Paginar: `before` = id da mais antiga |
 | `PUT /mark-conversation` | `{ conversationId, messageId }` | 200 `{ read }` — recibo de leitura (✓✓), por usuário |
 | `GET /conversations/:id/reads` | — | 200 `{ reads: ConversationReadDto[] }`: cursor de leitura dos **outros** membros (✓✓ = `id <= lastReadMessageId`; em grupo, o menor); 404 se não sou membro |
@@ -218,6 +220,8 @@ interface MessageDto {
   id: string // ULID
   conversationId: string; senderId: string
   body: string; clientMessageId: string | null; createdAt: Iso
+  replyTo: { id: string; senderId: string; body: string /* até 100 chars + "…" */ } | null // snapshot do envio
+  editedAt: Iso | null
 }
 
 interface ConversationReadDto { userId: string; lastReadMessageId: string | null } // de cada OUTRO membro
@@ -241,6 +245,8 @@ interface RoomInviteDto {
 // WebSocket
 type ServerFrame =
   | { type: 'message'; message: MessageDto }
+  | { type: 'message-edited'; eventId: string; message: MessageDto }
+  | { type: 'message-deleted'; eventId: string; messageId: string; conversationId: string }
   | { type: 'ack-result'; messageId: string; acknowledged: boolean }
 type ClientFrame = { type: 'ack'; messageId: string }
 ```
@@ -260,6 +266,8 @@ type ClientFrame = { type: 'ack'; messageId: string }
 
 **Ack**
 - **Cumulativo**: confirmar `X` confirma todas as anteriores. Mande só o maior id (debounce ~300 ms).
+- `message` confirma pelo `message.id`; `message-edited`/`message-deleted` confirmam pelo
+  **`eventId`** (ULID novo do evento, vai no campo `messageId` do `ack`). Mesma ordem de ULID.
 - Só confirme **depois de guardar no estado**. Sem ack a mensagem volta a cada reconexão e o
   inbox cresce (~1000 por device).
 - Ack (entrega, por device) ≠ `PUT /mark-conversation` (leitura, por usuário).
@@ -301,4 +309,4 @@ Não existem ainda; serão criadas **junto com o front**, quando a tela precisar
 - "Digitando…" (frame `typing`)
 - Push de notificação/presença/pedidos; presença em lote
 - Texto de notificação legível (hoje tem uuid cru)
-- Fora de escopo: transferir dono, editar/apagar mensagem, mídia
+- Fora de escopo: transferir dono, mídia

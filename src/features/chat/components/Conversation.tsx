@@ -12,6 +12,7 @@ import {
 } from '../context'
 import type { ChatMessage } from '../store'
 import { Composer } from './Composer'
+import { DeleteMessageDialog } from './DeleteMessageDialog'
 import { MessageList } from './MessageList'
 
 interface ConversationProps {
@@ -45,7 +46,19 @@ export function Conversation({
 }: ConversationProps) {
   const { store } = useChat()
   const { messages } = useConversation(conversationId)
-  const [replyingTo, setReplyingTo] = useState<ReplyToDto | null>(null)
+  const [replyDraft, setReplyDraft] = useState<ReplyToDto | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<ChatMessage | null>(null)
+
+  // Alguém apagou a mensagem enquanto eu respondia/editava (ou eu mesmo em
+  // outro device): a barra some sozinha. Só o que ainda está na lista vale
+  const replyingTo =
+    replyDraft && messages.some((m) => m.id === replyDraft.id)
+      ? replyDraft
+      : null
+  const editing = editingId
+    ? (messages.find((m) => m.id === editingId) ?? null)
+    : null
 
   function nameOf(senderId: string) {
     if (senderId === meId) return 'Você'
@@ -113,16 +126,36 @@ export function Conversation({
         senderNames={senderNames}
         othersReadUpTo={othersReadUpTo}
         nameOf={nameOf}
-        onReply={(message) => setReplyingTo(toReplyPreview(message))}
+        onReply={(message) => {
+          setEditingId(null)
+          setReplyDraft(toReplyPreview(message))
+        }}
+        onEdit={(message) => {
+          setReplyDraft(null)
+          setEditingId(message.id)
+        }}
+        onDelete={setDeleting}
       />
       <Composer
         onSend={(body) => {
           store.send(conversationId, meId, body, replyingTo)
-          setReplyingTo(null)
+          setReplyDraft(null)
         }}
         replyingTo={replyingTo}
         replyAuthor={replyingTo ? nameOf(replyingTo.senderId) : ''}
-        onCancelReply={() => setReplyingTo(null)}
+        onCancelReply={() => setReplyDraft(null)}
+        editing={editing && { id: editing.id, body: editing.body }}
+        onEdit={async (body) => {
+          if (!editing) return
+          await store.edit(editing.id, body)
+          setEditingId(null)
+        }}
+        onCancelEdit={() => setEditingId(null)}
+      />
+      <DeleteMessageDialog
+        message={deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={(messageId) => store.remove(conversationId, messageId)}
       />
     </>
   )

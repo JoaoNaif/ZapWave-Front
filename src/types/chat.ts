@@ -32,13 +32,26 @@ export interface MessageDto {
   clientMessageId: string | null
   // null: não é resposta, ou a original não existe mais
   replyTo: ReplyToDto | null
+  // null = nunca foi editada
+  editedAt: Iso | null
   createdAt: Iso
 }
 
-// WebSocket
+// WebSocket. message-edited/message-deleted têm eventId: é ele (e não o id da
+// mensagem) que vai no ack, porque é a chave de ordem do inbox do device
 export type ServerFrame =
   | { type: 'message'; message: MessageDto }
+  | { type: 'message-edited'; eventId: string; message: MessageDto }
+  | {
+      type: 'message-deleted'
+      eventId: string
+      messageId: string
+      conversationId: string
+    }
   | { type: 'ack-result'; messageId: string; acknowledged: boolean }
+
+// Frames que mudam as mensagens (o ack-result é só resposta do servidor)
+export type ChatEvent = Exclude<ServerFrame, { type: 'ack-result' }>
 
 export type ClientFrame = { type: 'ack'; messageId: string }
 

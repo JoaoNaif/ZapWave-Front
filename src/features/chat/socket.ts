@@ -1,4 +1,4 @@
-import type { ClientFrame, MessageDto, ServerFrame } from '@/types/chat'
+import type { ChatEvent, ClientFrame, ServerFrame } from '@/types/chat'
 
 // Fechamento que o back usa para handshake recusado ou device revogado
 const CLOSE_UNAUTHORIZED = 4401
@@ -13,8 +13,9 @@ export type SocketStatus = 'connecting' | 'open' | 'reconnecting' | 'follower'
 
 interface ChatSocketOptions {
   deviceId: string
-  // Tem que guardar no estado de forma síncrona: o ack sai logo depois
-  onMessage: (message: MessageDto) => void
+  // Mensagem nova, editada ou apagada. Tem que aplicar no estado de forma
+  // síncrona: o ack sai logo depois
+  onEvent: (event: ChatEvent) => void
   onStatus: (status: SocketStatus) => void
   // Voltou depois de cair: hora de buscar o histórico e completar buracos
   onReconnect: () => void
@@ -37,8 +38,8 @@ export function startChatSocket(options: ChatSocketOptions) {
   const controller = new AbortController()
   const channel = new BroadcastChannel(`zapwave:chat:${options.deviceId}`)
 
-  channel.onmessage = (event: MessageEvent<MessageDto>) =>
-    options.onMessage(event.data)
+  channel.onmessage = (event: MessageEvent<ChatEvent>) =>
+    options.onEvent(event.data)
 
   options.onStatus('follower')
 
@@ -135,12 +136,19 @@ function lead(
         } catch {
           return
         }
-        if (frame.type !== 'message') return
+        if (
+          frame.type !== 'message' &&
+          frame.type !== 'message-edited' &&
+          frame.type !== 'message-deleted'
+        ) {
+          return
+        }
 
-        // Ordem importa: guarda → repassa às outras abas → só então confirma
-        options.onMessage(frame.message)
-        channel.postMessage(frame.message)
-        scheduleAck(frame.message.id)
+        // Ordem importa: guarda → repassa às outras abas → só então confirma.
+        // Mensagem nova confirma pelo id dela; edição/remoção, pelo eventId
+        options.onEvent(frame)
+        channel.postMessage(frame)
+        scheduleAck(frame.type === 'message' ? frame.message.id : frame.eventId)
       }
 
       ws.onclose = async (event) => {

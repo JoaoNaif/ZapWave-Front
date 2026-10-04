@@ -37,20 +37,26 @@ export function ChatProvider({
     // que o segundo só abre depois
     const stop = startChatSocket({
       deviceId,
-      onMessage: (message) => {
-        const unseen = store.receive([message], { live: true })
-        for (const item of unseen) {
-          const { title, body, path } = describe(item, queryClient)
-          showMessageNotification({
-            title,
-            body,
-            tag: item.conversationId,
-            onClick: () => navigate(path),
-          })
+      onEvent: (event) => {
+        if (event.type === 'message') {
+          const unseen = store.receive([event.message], { live: true })
+          for (const item of unseen) {
+            const { title, body, path } = describe(item, queryClient)
+            showMessageNotification({
+              title,
+              body,
+              tag: item.conversationId,
+              onClick: () => navigate(path),
+            })
+          }
+        } else if (event.type === 'message-edited') {
+          store.applyEdit(event.message)
+        } else {
+          store.applyDelete(event.conversationId, event.messageId)
         }
 
-        // Mensagem nova muda a ordem das listas de amigos e de grupos
-        // (agrupa rajadas numa busca só)
+        // Mensagem nova, editada ou apagada muda a prévia e a ordem das listas
+        // de amigos e de grupos (agrupa rajadas numa busca só)
         clearTimeout(listsTimer)
         listsTimer = setTimeout(() => {
           void queryClient.invalidateQueries({ queryKey: friendsQueryKey })

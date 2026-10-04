@@ -1,11 +1,19 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import {
   AlertIcon,
   CheckCheckIcon,
   CheckIcon,
   ChevronDownIcon,
   ClockIcon,
+  PencilIcon,
   ReplyIcon,
+  TrashIcon,
 } from '@/components/icons'
 import { Linkify } from '@/components/Linkify'
 import { avatarColor } from '@/lib/avatar-color'
@@ -31,6 +39,9 @@ interface MessageListProps {
   // Nome de quem escreveu a mensagem citada ("Você" para mim)
   nameOf: (senderId: string) => string
   onReply: (message: ChatMessage) => void
+  // Só chamados em mensagem minha já no servidor
+  onEdit: (message: ChatMessage) => void
+  onDelete: (message: ChatMessage) => void
 }
 
 export function MessageList({
@@ -40,6 +51,8 @@ export function MessageList({
   othersReadUpTo,
   nameOf,
   onReply,
+  onEdit,
+  onDelete,
 }: MessageListProps) {
   const { store } = useChat()
   const state = useConversation(conversationId)
@@ -237,6 +250,8 @@ export function MessageList({
                   }
                   onRetry={() => store.retry(conversationId, message.id)}
                   onReply={() => onReply(message)}
+                  onEdit={() => onEdit(message)}
+                  onDelete={() => onDelete(message)}
                   replyAuthor={
                     message.replyTo ? nameOf(message.replyTo.senderId) : ''
                   }
@@ -299,6 +314,8 @@ interface MessageBubbleProps {
   grouped: boolean
   onRetry: () => void
   onReply: () => void
+  onEdit: () => void
+  onDelete: () => void
   // Nome do autor da mensagem citada
   replyAuthor: string
   onJumpToReply: (messageId: string) => void
@@ -315,6 +332,8 @@ function MessageBubble({
   grouped,
   onRetry,
   onReply,
+  onEdit,
+  onDelete,
   replyAuthor,
   onJumpToReply,
   highlighted,
@@ -330,9 +349,9 @@ function MessageBubble({
         grouped ? 'mt-0.5' : 'mt-2'
       }`}
     >
-      {/* Botão "Responder" ao lado da bolha: aparece no hover/foco (no toque,
-          fica sempre visível). Só em mensagem já no servidor: a otimista ainda
-          não tem id real para o back validar */}
+      {/* Ações ao lado da bolha (responder; e, nas minhas, editar e apagar):
+          aparecem no hover/foco (no toque, ficam sempre visíveis). Só em
+          mensagem já no servidor: a otimista ainda não tem id real */}
       <div
         className={`group flex max-w-[85%] items-center gap-1 md:max-w-[70%] ${
           mine ? 'flex-row-reverse' : ''
@@ -375,6 +394,7 @@ function MessageBubble({
             <Linkify text={message.body} />
             {/* Horário "flutuando" no fim da última linha, estilo WhatsApp */}
             <span className="float-right mt-1.5 ml-3 flex items-center gap-1 text-[11px] leading-none text-fg-muted">
+              {message.editedAt && <span>editada</span>}
               {formatTime(message.createdAt)}
               {mine && message.status === 'sending' && (
                 <ClockIcon className="size-3" label="Enviando" />
@@ -395,14 +415,21 @@ function MessageBubble({
         </div>
 
         {message.status === 'sent' && (
-          <button
-            type="button"
-            onClick={onReply}
-            aria-label="Responder"
-            className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-fg-subtle opacity-0 transition group-hover:opacity-100 hover:bg-elevated hover:text-fg focus-visible:opacity-100 pointer-coarse:opacity-100"
-          >
-            <ReplyIcon className="size-4" />
-          </button>
+          <div className="flex shrink-0 items-center opacity-0 transition group-hover:opacity-100 focus-within:opacity-100 pointer-coarse:opacity-100">
+            <BubbleAction label="Responder" onClick={onReply}>
+              <ReplyIcon className="size-4" />
+            </BubbleAction>
+            {mine && (
+              <>
+                <BubbleAction label="Editar" onClick={onEdit}>
+                  <PencilIcon className="size-4" />
+                </BubbleAction>
+                <BubbleAction label="Apagar" onClick={onDelete}>
+                  <TrashIcon className="size-4" />
+                </BubbleAction>
+              </>
+            )}
+          </div>
         )}
       </div>
 
@@ -417,5 +444,27 @@ function MessageBubble({
         </button>
       )}
     </div>
+  )
+}
+
+function BubbleAction({
+  label,
+  onClick,
+  children,
+}: {
+  label: string
+  onClick: () => void
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="flex size-7 cursor-pointer items-center justify-center rounded-full text-fg-subtle transition hover:bg-elevated hover:text-fg"
+    >
+      {children}
+    </button>
   )
 }

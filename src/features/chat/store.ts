@@ -1,6 +1,11 @@
 import { isAxiosError } from 'axios'
 import type { MessageDto, ReplyToDto } from '@/types/chat'
-import { fetchConversationHistory, sendMessage } from './api'
+import {
+  deleteMessage,
+  editMessage,
+  fetchConversationHistory,
+  sendMessage,
+} from './api'
 
 // Vale tentar de novo: sem resposta (rede caiu), servidor fora (5xx) ou rate
 // limit (429). 4xx de regra (não é membro, texto inválido) não muda tentando
@@ -54,15 +59,25 @@ function compare(a: ChatMessage, b: ChatMessage) {
 // Entrega é "pelo menos uma vez": dedup por id, e a versão do servidor
 // substitui a otimista que tem o mesmo clientMessageId
 function merge(current: ChatMessage[], incoming: MessageDto[]) {
-  const sentIds = new Set(
-    current.filter((m) => m.status === 'sent').map((m) => m.id)
-  )
   const next = [...current]
+  // id → posição, só das que já estão no servidor
+  const sentIndex = new Map<string, number>()
+  next.forEach((m, index) => {
+    if (m.status === 'sent') sentIndex.set(m.id, index)
+  })
   let changed = false
 
   for (const message of incoming) {
-    if (sentIds.has(message.id)) continue
-    sentIds.add(message.id)
+    const existing = sentIndex.get(message.id)
+    if (existing !== undefined) {
+      // Já tenho: só troca se a versão que chegou é uma edição mais nova (o
+      // histórico refeito depois de reconectar pode trazer o texto editado)
+      if ((message.editedAt ?? '') > (next[existing].editedAt ?? '')) {
+        next[existing] = { ...message, status: 'sent' }
+        changed = true
+      }
+      continue
+    }
     changed = true
 
     const sent: ChatMessage = { ...message, status: 'sent' }
@@ -73,8 +88,13 @@ function merge(current: ChatMessage[], incoming: MessageDto[]) {
         )
       : -1
 
-    if (pendingIndex >= 0) next[pendingIndex] = sent
-    else next.push(sent)
+    if (pendingIndex >= 0) {
+      next[pendingIndex] = sent
+      sentIndex.set(message.id, pendingIndex)
+    } else {
+      next.push(sent)
+      sentIndex.set(message.id, next.length - 1)
+    }
   }
 
   return changed ? next.sort(compare) : current
@@ -186,6 +206,43 @@ export function createChatStore(meId: string) {
     }
 
     return unseen
+  }
+
+  // Edição (minha, de outro device ou de outro membro). Só mexe no que já está
+  // carregado: se a mensagem não está aqui, o histórico traz a versão nova.
+  // Idempotente: o eco da minha própria edição chega depois da resposta do PATCH
+  function applyEdit(message: MessageDto) {
+    const known = get(message.conversationId).messages.some(
+      (m) => m.status === 'sent' && m.id === message.id
+    )
+    if (!known) return
+    update(message.conversationId, (state) => ({
+      messages: state.messages.map((m) =>
+        m.status === 'sent' && m.id === message.id
+          ? { ...m, body: message.body, editedAt: message.editedAt }
+          : m
+      ),
+    }))
+  }
+
+  // Remoção: some da lista, e as respostas a ela perdem a citação (o back faz
+  // o mesmo no banco: replyTo vira null)
+  function applyDelete(conversationId: string, messageId: string) {
+    update(conversationId, (state) => ({
+      messages: state.messages
+        .filter((m) => !(m.status === 'sent' && m.id === messageId))
+        .map((m) => (m.replyTo?.id === messageId ? { ...m, replyTo: null } : m)),
+    }))
+  }
+
+  // Erro (403/404/rede) sobe para a tela mostrar; o estado só muda no sucesso
+  async function edit(messageId: string, body: string) {
+    applyEdit(await editMessage(messageId, body))
+  }
+
+  async function remove(conversationId: string, messageId: string) {
+    await deleteMessage(messageId)
+    applyDelete(conversationId, messageId)
   }
 
   function getUnread() {
@@ -342,6 +399,7 @@ export function createChatStore(meId: string) {
       senderId,
       body,
       replyTo,
+      editedAt: null,
       createdAt: new Date().toISOString(),
       status: 'sending',
     }
@@ -373,6 +431,10 @@ export function createChatStore(meId: string) {
     get,
     subscribe,
     receive,
+    applyEdit,
+    applyDelete,
+    edit,
+    remove,
     getUnread,
     markSeen,
     setActive,

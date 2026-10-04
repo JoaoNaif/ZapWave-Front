@@ -42,6 +42,22 @@ export async function sendMessage(data: {
   return response.data.message
 }
 
+// PATCH /message/:id → 200 { message }. Só o autor (403 se não for); 404 se
+// não existe ou não sou membro da conversa
+export async function editMessage(messageId: string, body: string) {
+  const response = await api.patch<{ message: MessageDto }>(
+    `/message/${messageId}`,
+    { body }
+  )
+  return response.data.message
+}
+
+// DELETE /message/:id → 204. Só o autor. Apaga de verdade (para todos); as
+// respostas a ela ficam com replyTo null
+export async function deleteMessage(messageId: string) {
+  await api.delete(`/message/${messageId}`)
+}
+
 // PUT /mark-conversation → recibo de leitura (por usuário, não por device)
 export async function markConversationRead(data: {
   conversationId: string
