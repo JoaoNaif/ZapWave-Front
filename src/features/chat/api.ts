@@ -30,11 +30,13 @@ export async function fetchConversationHistory(
 }
 
 // POST /message → 201 { message }. Idempotente por clientMessageId:
-// reenviar com o mesmo id não duplica
+// reenviar com o mesmo id não duplica. replyToId: id (ULID) de uma mensagem da
+// mesma conversa; 404 se não existe nela
 export async function sendMessage(data: {
   conversationId: string
   body: string
   clientMessageId: string
+  replyToId?: string
 }) {
   const response = await api.post<{ message: MessageDto }>('/message', data)
   return response.data.message

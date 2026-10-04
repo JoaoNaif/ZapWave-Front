@@ -17,12 +17,21 @@ export interface ConversationMemberDto {
   lastReadMessageId: string | null
 }
 
+// A mensagem que esta responde. body já vem cortado em 100 caracteres (com "…")
+export interface ReplyToDto {
+  id: string
+  senderId: string
+  body: string
+}
+
 export interface MessageDto {
   id: string // ULID: comparar strings = comparar tempo (a < b ⇒ a mais antiga)
   conversationId: string
   senderId: string
   body: string
   clientMessageId: string | null
+  // null: não é resposta, ou a original não existe mais
+  replyTo: ReplyToDto | null
   createdAt: Iso
 }
 

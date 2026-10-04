@@ -5,6 +5,7 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ClockIcon,
+  ReplyIcon,
 } from '@/components/icons'
 import { Linkify } from '@/components/Linkify'
 import { avatarColor } from '@/lib/avatar-color'
@@ -27,6 +28,9 @@ interface MessageListProps {
   // Até onde os outros leram (menor cursor). undefined = sem ✓✓ (ninguém
   // mais na conversa, ou ainda carregando)
   othersReadUpTo?: string
+  // Nome de quem escreveu a mensagem citada ("Você" para mim)
+  nameOf: (senderId: string) => string
+  onReply: (message: ChatMessage) => void
 }
 
 export function MessageList({
@@ -34,6 +38,8 @@ export function MessageList({
   meId,
   senderNames,
   othersReadUpTo,
+  nameOf,
+  onReply,
 }: MessageListProps) {
   const { store } = useChat()
   const state = useConversation(conversationId)
@@ -45,6 +51,11 @@ export function MessageList({
   const [atBottom, setAtBottom] = useState(true)
   // Última mensagem que estava na tela quando a pessoa saiu do fim
   const [readUpTo, setReadUpTo] = useState('')
+  // Mensagem destacada depois de clicar na citação de uma resposta
+  const [highlightedId, setHighlightedId] = useState('')
+  const highlightTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  useEffect(() => () => clearTimeout(highlightTimer.current), [])
 
   useEffect(() => {
     if (state.history === 'idle') void store.loadLatest(conversationId)
@@ -83,6 +94,19 @@ export function MessageList({
           message.senderId !== meId &&
           message.id > readUpTo
       ).length
+
+  // Clicou na citação: rola até a original (se ela já está carregada) e a
+  // destaca por um instante
+  function jumpToMessage(messageId: string) {
+    const target = scrollRef.current?.querySelector<HTMLElement>(
+      `[data-message-id="${messageId}"]`
+    )
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setHighlightedId(messageId)
+    clearTimeout(highlightTimer.current)
+    highlightTimer.current = setTimeout(() => setHighlightedId(''), 1500)
+  }
 
   function scrollToBottom() {
     const element = scrollRef.current
@@ -212,6 +236,12 @@ export function MessageList({
                       : undefined
                   }
                   onRetry={() => store.retry(conversationId, message.id)}
+                  onReply={() => onReply(message)}
+                  replyAuthor={
+                    message.replyTo ? nameOf(message.replyTo.senderId) : ''
+                  }
+                  onJumpToReply={jumpToMessage}
+                  highlighted={highlightedId === message.id}
                   read={
                     othersReadUpTo !== undefined &&
                     message.status === 'sent' &&
@@ -268,6 +298,12 @@ interface MessageBubbleProps {
   mine: boolean
   grouped: boolean
   onRetry: () => void
+  onReply: () => void
+  // Nome do autor da mensagem citada
+  replyAuthor: string
+  onJumpToReply: (messageId: string) => void
+  // Piscando depois de alguém clicar na citação que aponta para ela
+  highlighted: boolean
   senderName?: string
   // Minha mensagem já lida pelo(s) outro(s)
   read: boolean
@@ -278,48 +314,96 @@ function MessageBubble({
   mine,
   grouped,
   onRetry,
+  onReply,
+  replyAuthor,
+  onJumpToReply,
+  highlighted,
   senderName,
   read,
 }: MessageBubbleProps) {
+  const { replyTo } = message
+
   return (
     <div
+      data-message-id={message.id}
       className={`flex flex-col ${mine ? 'items-end' : 'items-start'} ${
         grouped ? 'mt-0.5' : 'mt-2'
       }`}
     >
+      {/* Botão "Responder" ao lado da bolha: aparece no hover/foco (no toque,
+          fica sempre visível). Só em mensagem já no servidor: a otimista ainda
+          não tem id real para o back validar */}
       <div
-        className={`max-w-[80%] rounded-2xl px-3 py-1.5 text-sm md:max-w-[65%] ${
-          mine
-            ? `bg-bubble-mine ${grouped ? '' : 'rounded-tr-md'}`
-            : `bg-bubble-other ${grouped ? '' : 'rounded-tl-md'}`
-        } ${message.status === 'failed' ? 'opacity-60' : ''}`}
+        className={`group flex max-w-[85%] items-center gap-1 md:max-w-[70%] ${
+          mine ? 'flex-row-reverse' : ''
+        }`}
       >
-        {senderName && (
-          // Mesma cor do avatar da pessoa
-          <p
-            className={`mb-0.5 truncate text-xs font-semibold ${avatarColor(message.senderId).text}`}
-          >
-            {senderName}
+        <div
+          className={`min-w-0 rounded-2xl px-3 py-1.5 text-sm transition-shadow duration-300 ${
+            mine
+              ? `bg-bubble-mine ${grouped ? '' : 'rounded-tr-md'}`
+              : `bg-bubble-other ${grouped ? '' : 'rounded-tl-md'}`
+          } ${message.status === 'failed' ? 'opacity-60' : ''} ${
+            highlighted ? 'ring-2 ring-primary' : ''
+          }`}
+        >
+          {senderName && (
+            // Mesma cor do avatar da pessoa
+            <p
+              className={`mb-0.5 truncate text-xs font-semibold ${avatarColor(message.senderId).text}`}
+            >
+              {senderName}
+            </p>
+          )}
+          {replyTo && (
+            <button
+              type="button"
+              onClick={() => onJumpToReply(replyTo.id)}
+              className="mb-1 block w-full cursor-pointer rounded-lg border-l-4 border-primary bg-black/20 px-2 py-1 text-left text-xs"
+            >
+              <span
+                className={`block truncate font-semibold ${avatarColor(replyTo.senderId).text}`}
+              >
+                {replyAuthor}
+              </span>
+              <span className="line-clamp-2 wrap-break-word text-fg-muted">
+                {replyTo.body}
+              </span>
+            </button>
+          )}
+          <p className="wrap-break-word whitespace-pre-wrap">
+            <Linkify text={message.body} />
+            {/* Horário "flutuando" no fim da última linha, estilo WhatsApp */}
+            <span className="float-right mt-1.5 ml-3 flex items-center gap-1 text-[11px] leading-none text-fg-muted">
+              {formatTime(message.createdAt)}
+              {mine && message.status === 'sending' && (
+                <ClockIcon className="size-3" label="Enviando" />
+              )}
+              {/* ✓ = chegou no servidor; ✓✓ em aqua = lida (por todos, em grupo) */}
+              {mine &&
+                message.status === 'sent' &&
+                (read ? (
+                  <CheckCheckIcon
+                    className="size-3.5 text-online"
+                    label="Lida"
+                  />
+                ) : (
+                  <CheckIcon className="size-3.5" label="Enviada" />
+                ))}
+            </span>
           </p>
+        </div>
+
+        {message.status === 'sent' && (
+          <button
+            type="button"
+            onClick={onReply}
+            aria-label="Responder"
+            className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-fg-subtle opacity-0 transition group-hover:opacity-100 hover:bg-elevated hover:text-fg focus-visible:opacity-100 pointer-coarse:opacity-100"
+          >
+            <ReplyIcon className="size-4" />
+          </button>
         )}
-        <p className="wrap-break-word whitespace-pre-wrap">
-          <Linkify text={message.body} />
-          {/* Horário "flutuando" no fim da última linha, estilo WhatsApp */}
-          <span className="float-right mt-1.5 ml-3 flex items-center gap-1 text-[11px] leading-none text-fg-muted">
-            {formatTime(message.createdAt)}
-            {mine && message.status === 'sending' && (
-              <ClockIcon className="size-3" label="Enviando" />
-            )}
-            {/* ✓ = chegou no servidor; ✓✓ em aqua = lida (por todos, em grupo) */}
-            {mine &&
-              message.status === 'sent' &&
-              (read ? (
-                <CheckCheckIcon className="size-3.5 text-online" label="Lida" />
-              ) : (
-                <CheckIcon className="size-3.5" label="Enviada" />
-              ))}
-          </span>
-        </p>
       </div>
 
       {message.status === 'failed' && (

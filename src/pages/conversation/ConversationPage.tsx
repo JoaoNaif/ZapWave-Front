@@ -92,6 +92,7 @@ export function ConversationPage() {
           key={dm.data.id}
           conversationId={dm.data.id}
           meId={me.user.id}
+          peer={friend && { id: friend.id, name: friend.displayName }}
         />
       )}
     </div>

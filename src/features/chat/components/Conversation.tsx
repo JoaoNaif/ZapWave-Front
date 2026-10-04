@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { friendsQueryKey } from '@/features/friendship/hooks'
 import { roomsQueryKey } from '@/features/rooms/hooks'
+import type { ReplyToDto } from '@/types/chat'
 import { markConversationRead } from '../api'
 import {
   readsQueryKey,
@@ -9,6 +10,7 @@ import {
   useConversation,
   useConversationReads,
 } from '../context'
+import type { ChatMessage } from '../store'
 import { Composer } from './Composer'
 import { MessageList } from './MessageList'
 
@@ -17,15 +19,39 @@ interface ConversationProps {
   meId: string
   // Grupo: senderId → nome (quem falou aparece em cima da bolha)
   senderNames?: Map<string, string>
+  // DM: o outro lado (só para dar nome à citação; em grupo vale senderNames)
+  peer?: { id: string; name: string }
+}
+
+// Mesmo corte que o back usa no preview da resposta
+const REPLY_PREVIEW_MAX = 100
+
+function toReplyPreview(message: ChatMessage): ReplyToDto {
+  return {
+    id: message.id,
+    senderId: message.senderId,
+    body:
+      message.body.length > REPLY_PREVIEW_MAX
+        ? message.body.slice(0, REPLY_PREVIEW_MAX) + '…'
+        : message.body,
+  }
 }
 
 export function Conversation({
   conversationId,
   meId,
   senderNames,
+  peer,
 }: ConversationProps) {
   const { store } = useChat()
   const { messages } = useConversation(conversationId)
+  const [replyingTo, setReplyingTo] = useState<ReplyToDto | null>(null)
+
+  function nameOf(senderId: string) {
+    if (senderId === meId) return 'Você'
+    if (peer?.id === senderId) return peer.name
+    return senderNames?.get(senderId) ?? 'Ex-membro'
+  }
 
   // Última mensagem que já está no servidor (as otimistas não têm id real).
   // Marca mesmo se for minha: o unreadCount do back conta tudo que é dos
@@ -86,8 +112,18 @@ export function Conversation({
         meId={meId}
         senderNames={senderNames}
         othersReadUpTo={othersReadUpTo}
+        nameOf={nameOf}
+        onReply={(message) => setReplyingTo(toReplyPreview(message))}
       />
-      <Composer onSend={(body) => store.send(conversationId, meId, body)} />
+      <Composer
+        onSend={(body) => {
+          store.send(conversationId, meId, body, replyingTo)
+          setReplyingTo(null)
+        }}
+        replyingTo={replyingTo}
+        replyAuthor={replyingTo ? nameOf(replyingTo.senderId) : ''}
+        onCancelReply={() => setReplyingTo(null)}
+      />
     </>
   )
 }

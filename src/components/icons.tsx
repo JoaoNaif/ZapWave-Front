@@ -208,6 +208,15 @@ export function ChevronDownIcon(props: IconProps) {
   )
 }
 
+export function ReplyIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M9 17 4 12l5-5" />
+      <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+    </Icon>
+  )
+}
+
 // ✓✓ (lida)
 export function CheckCheckIcon(props: IconProps) {
   return (

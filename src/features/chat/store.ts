@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios'
-import type { MessageDto } from '@/types/chat'
+import type { MessageDto, ReplyToDto } from '@/types/chat'
 import { fetchConversationHistory, sendMessage } from './api'
 
 // Vale tentar de novo: sem resposta (rede caiu), servidor fora (5xx) ou rate
@@ -292,6 +292,7 @@ export function createChatStore(meId: string) {
             conversationId: message.conversationId,
             body: message.body,
             clientMessageId: message.id,
+            replyToId: message.replyTo?.id,
           })
           outbox.shift()
           retryAttempt = 0
@@ -327,7 +328,12 @@ export function createChatStore(meId: string) {
   }
 
   // Otimista: aparece na hora como "sending"; a resposta (ou o eco) troca pela real
-  function send(conversationId: string, senderId: string, body: string) {
+  function send(
+    conversationId: string,
+    senderId: string,
+    body: string,
+    replyTo: ReplyToDto | null = null
+  ) {
     const clientMessageId = crypto.randomUUID()
     const message: ChatMessage = {
       id: clientMessageId,
@@ -335,6 +341,7 @@ export function createChatStore(meId: string) {
       conversationId,
       senderId,
       body,
+      replyTo,
       createdAt: new Date().toISOString(),
       status: 'sending',
     }
